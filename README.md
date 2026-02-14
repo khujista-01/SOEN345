@@ -8,7 +8,7 @@ A cloud-based ticket booking application for events including movies, concerts, 
 - **Semester:** Winter 2026.  
 - **Team Members:**
   - Yasmeen Adi - 40223656.  
-  - Rim ChCharafeddine - 40282994.  
+  - Rim Charafeddine - 40282994.  
   - Khujista faqiri - 40249541.  
   - Nayla Nocera - 40283927.
   - Nicole Antoun -  40284018
@@ -22,7 +22,7 @@ Develop a ticket booking system that allows
   
 ## Technology Stack  
 
-- **Language:** Java  
+- **Language:** Java + Kotlin 
 - **IDE:** Android Studio  
 - **Database:** MySQL Supabase
 - **Version Control:** GitHub  
