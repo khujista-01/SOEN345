@@ -12,6 +12,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.soen345.ticketreservation.ui.theme.TicketReservationTheme
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.soen345.ticketreservation.data.SupabaseClient
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -24,6 +29,23 @@ class MainActivity : ComponentActivity() {
                         name = "Android",
                         modifier = Modifier.padding(innerPadding)
                     )
+                }
+            }
+        }
+        lifecycleScope.launch {
+            val jsonBody = """
+                {
+                    "email": "test@example.com",
+                    "password_hash": "fakehash123"
+                }
+            """.trimIndent()
+
+            val request = SupabaseClient.insertUserRequest(jsonBody)
+
+            withContext(Dispatchers.IO) {
+                SupabaseClient.http().newCall(request).execute().use { response ->
+                    android.util.Log.d("SUPABASE_TEST", "CODE=${response.code}")
+                    android.util.Log.d("SUPABASE_TEST", "BODY=${response.body?.string()}")
                 }
             }
         }
