@@ -44,6 +44,7 @@ import com.soen345.ticketreservation.ui.theme.TicketReservationTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.soen345.ticketreservation.ui.events_page.EventsDummyScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -69,7 +70,7 @@ private fun AppRoot() {
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Ticket Reservation") },
+                title = { Text("Events Browsing page") },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 ),
@@ -119,7 +120,10 @@ private fun AppRoot() {
                     )
                 }
             } else {
-                LoggedInCard(session = session!!)
+                EventsDummyScreen(
+                    userId = session!!.userId,
+                    userAccessToken = session!!.accessToken
+                )
             }
         }
     }
@@ -401,28 +405,6 @@ private fun RegisterCard(onRegisterSuccess: (AuthClient.AuthSession) -> Unit) {
         }
     }
 }
-
-@Composable
-private fun LoggedInCard(session: AuthClient.AuthSession) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Text("You’re logged in ✅", style = MaterialTheme.typography.titleLarge)
-            Text("User ID: ${session.userId}")
-            Text("Email: ${session.email}")
-
-            HorizontalDivider()
-
-            Text(
-                "(Logout is in the top bar.)",
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
-    }
-}
-
 private fun isValidEmail(email: String): Boolean {
     return email.contains('@') && email.contains('.') && email.length >= 5
 }
