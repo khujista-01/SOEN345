@@ -13,6 +13,7 @@ object SupabaseClient {
 
     private const val TAG = "SUPABASE_TEST"
     private val http = OkHttpClient()
+    private const val BASE_URL = "${BuildConfig.SUPABASE_URL}/rest/v1"
 
     fun upsertUserProfile(
         accessToken: String,
@@ -97,6 +98,51 @@ object SupabaseClient {
             }
 
             return events
+        }
+    }
+
+
+    suspend fun insertReservation(eventId: String, userId: String, accessToken: String): Boolean {
+        val json = JSONObject().apply {
+            put("event_id", eventId)
+            put("user_id", userId)
+        }
+
+        val requestBody = json.toString()
+            .toRequestBody("application/json".toMediaType())
+
+        val request = Request.Builder()
+            .url("$BASE_URL/reservations") // Your table name
+            .addHeader("apikey", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx4Y3N3dWlqcnB3ZmVndmlmdHB3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExNzIyMTQsImV4cCI6MjA4Njc0ODIxNH0.J_VXqZljBs_nkGApzF4PwhCVx-K0es5p474iOvTPYiY")
+            .addHeader("Authorization", "Bearer $accessToken")
+            .post(requestBody)
+            .build()
+
+        return try {
+            http.newCall(request).execute().use { response ->
+                response.isSuccessful
+            }
+        } catch (e: Exception) {
+            Log.e("SupabaseClient", "Error inserting reservation", e)
+            false
+        }
+    }
+
+    suspend fun deleteReservation(eventId: String, userId: String, accessToken: String): Boolean {
+        val request = Request.Builder()
+            .url("$BASE_URL/reservations?event_id=eq.$eventId&user_id=eq.$userId")
+            .addHeader("apikey", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx4Y3N3dWlqcnB3ZmVndmlmdHB3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExNzIyMTQsImV4cCI6MjA4Njc0ODIxNH0.J_VXqZljBs_nkGApzF4PwhCVx-K0es5p474iOvTPYiY")
+            .addHeader("Authorization", "Bearer $accessToken")
+            .delete()
+            .build()
+
+        return try {
+            http.newCall(request).execute().use { response ->
+                response.isSuccessful
+            }
+        } catch (e: Exception) {
+            Log.e("SupabaseClient", "Error deleting reservation", e)
+            false
         }
     }
 }
