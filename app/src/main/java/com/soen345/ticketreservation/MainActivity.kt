@@ -120,7 +120,10 @@ private fun AppRoot() {
                     )
                 }
             } else {
-                EventsDummyScreen()
+                EventsDummyScreen(
+                    userId = session!!.userId,
+                    userAccessToken = session!!.accessToken
+                )
             }
         }
     }
