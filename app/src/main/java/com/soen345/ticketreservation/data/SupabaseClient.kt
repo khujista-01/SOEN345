@@ -2,6 +2,7 @@ package com.soen345.ticketreservation.data
 
 import android.util.Log
 import com.soen345.ticketreservation.BuildConfig
+import com.soen345.ticketreservation.ui.events_page.Event
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -50,6 +51,52 @@ object SupabaseClient {
             Log.d(TAG, "CODE=${resp.code}")
             Log.d(TAG, "BODY=$respBody")
             return resp.code to respBody
+        }
+    }
+
+    //added this for browsing events
+    fun fetchEvents(accessToken: String): List<Event>? {
+
+        val url =
+            "${BuildConfig.SUPABASE_URL}/rest/v1/events?select=*"
+
+        val req = Request.Builder()
+            .url(url)
+            .get()
+            .addHeader("apikey", BuildConfig.SUPABASE_ANON_KEY)
+            .addHeader("Authorization", "Bearer $accessToken")
+            .build()
+
+        Log.d(TAG, "REQUEST fetch events")
+
+        http.newCall(req).execute().use { resp ->
+            val body = resp.body?.string().orEmpty()
+            Log.d(TAG, "CODE=${resp.code}")
+            Log.d(TAG, "BODY=$body")
+
+            if (!resp.isSuccessful) return null
+
+            val jsonArray = org.json.JSONArray(body)
+            val events = mutableListOf<Event>()
+
+            for (i in 0 until jsonArray.length()) {
+                val obj = jsonArray.getJSONObject(i)
+
+                events.add(
+                    Event(
+                        id = obj.getString("id"),
+                        title = obj.getString("title"),
+                        description = obj.getString("description"),
+                        category = obj.getString("category"),
+                        location = obj.getString("location"),
+                        date = obj.getString("date"),
+                        availableTickets = obj.getInt("available_tickets"),
+                        price = obj.getDouble("price")
+                    )
+                )
+            }
+
+            return events
         }
     }
 }
