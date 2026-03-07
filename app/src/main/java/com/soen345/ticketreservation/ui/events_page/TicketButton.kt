@@ -8,26 +8,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import kotlinx.coroutines.launch
 
 @Composable
-fun TicketButton(eventId: String, userId: String, accessToken: String) {
-    var reserved by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-
+fun TicketButton(
+    isReserved: Boolean,
+    onReservedChange: (Boolean) -> Unit
+) {
     Button(
-        onClick = {
-            scope.launch {
-                if (!reserved) {
-                    // Reserve ticket
-                    val success = TicketActions.reserveTicket(eventId, userId, accessToken)
-                    if (success) reserved = true
-                } else {
-                    // Cancel reservation
-                    val success = TicketActions.cancelReservation(eventId, userId, accessToken)
-                    if (success) reserved = false
-                }
-            }
-        },
+        onClick = { onReservedChange(!isReserved) },
         modifier = Modifier.fillMaxWidth()
     ) {
-        Text(if (reserved) "Cancel Reservation" else "Reserve Ticket")
+        Text(if (isReserved) "Cancel Reservation" else "Reserve Ticket")
     }
 }

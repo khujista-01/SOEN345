@@ -13,8 +13,9 @@ object SupabaseClient {
 
     private const val TAG = "SUPABASE_TEST"
     private val http = OkHttpClient()
-    private const val BASE_URL = "${BuildConfig.SUPABASE_URL}/rest/v1"
-
+    //private const val BASE_URL = "${BuildConfig.SUPABASE_URL}/rest/v1"
+    var BASE_URL = "${BuildConfig.SUPABASE_URL}/rest/v1"
+    fun getBaseUrl() = BASE_URL // optional getter
     fun upsertUserProfile(
         accessToken: String,
         userId: String,
@@ -24,7 +25,8 @@ object SupabaseClient {
     ): Pair<Int, String> {
 
         val url =
-            "${BuildConfig.SUPABASE_URL}/rest/v1/users?on_conflict=id"
+            //"${BuildConfig.SUPABASE_URL}/rest/v1/users?on_conflict=id"
+            "$BASE_URL/users?on_conflict=id"
 
         val json = JSONObject().apply {
             put("id", userId)                 // MUST match auth.uid()
@@ -59,8 +61,8 @@ object SupabaseClient {
     fun fetchEvents(accessToken: String): List<Event>? {
 
         val url =
-            "${BuildConfig.SUPABASE_URL}/rest/v1/events?select=*"
-
+            //"${BuildConfig.SUPABASE_URL}/rest/v1/events?select=*"
+            "$BASE_URL/events?select=*"
         val req = Request.Builder()
             .url(url)
             .get()

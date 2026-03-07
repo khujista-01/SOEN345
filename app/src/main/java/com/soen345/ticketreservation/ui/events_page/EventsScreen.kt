@@ -25,6 +25,9 @@ fun EventsScreen(events: List<Event>, userId: String, userAccessToken: String) {
 
 @Composable
 fun EventCard(event: Event, userId: String, userAccessToken: String) {
+    var isReserved by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
@@ -34,9 +37,9 @@ fun EventCard(event: Event, userId: String, userAccessToken: String) {
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
 
-            Text(text = event.title, style = MaterialTheme.typography.titleLarge)
-            Text(text = event.category, style = MaterialTheme.typography.labelMedium)
-            Text(text = event.description, style = MaterialTheme.typography.bodyMedium)
+            Text(event.title, style = MaterialTheme.typography.titleLarge)
+            Text(event.category, style = MaterialTheme.typography.labelMedium)
+            Text(event.description, style = MaterialTheme.typography.bodyMedium)
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -47,16 +50,25 @@ fun EventCard(event: Event, userId: String, userAccessToken: String) {
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // ✅ Here is where you call TicketButton
             TicketButton(
-                eventId = event.id,
-                userId = userId,
-                accessToken = userAccessToken
+                isReserved = isReserved,
+                onReservedChange = { newState ->
+                    scope.launch {
+                        val success =
+                            if (newState)
+                                TicketActions.reserveTicket(event.id, userId, userAccessToken)
+                            else
+                                TicketActions.cancelReservation(event.id, userId, userAccessToken)
+
+                        if (success) {
+                            isReserved = newState
+                        }
+                    }
+                }
             )
         }
     }
 }
-
 @Composable
 fun EventsDummyScreen(
     userId: String,
