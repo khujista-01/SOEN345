@@ -11,8 +11,8 @@ import org.json.JSONObject
 object AuthClient {
 
     private const val TAG = "AUTH"
-    private val http = OkHttpClient()
-
+    internal var http: OkHttpClient = OkHttpClient()
+    var BASE_URL: String = BuildConfig.SUPABASE_URL
     data class AuthSession(
         val userId: String,
         val email: String,
@@ -20,7 +20,8 @@ object AuthClient {
     )
 
     fun signUp(email: String, password: String): Pair<Int, String> {
-        val url = "${BuildConfig.SUPABASE_URL}/auth/v1/signup"
+       // val url = "${BuildConfig.SUPABASE_URL}/auth/v1/signup"
+        val url = "$BASE_URL/auth/v1/signup"
 
         val json = JSONObject().apply {
             put("email", email)
@@ -42,8 +43,8 @@ object AuthClient {
     }
 
     fun signIn(email: String, password: String): AuthSession? {
-        val url = "${BuildConfig.SUPABASE_URL}/auth/v1/token?grant_type=password"
-
+        //val url = "${BuildConfig.SUPABASE_URL}/auth/v1/token?grant_type=password"
+        val url = "$BASE_URL/auth/v1/token?grant_type=password"
         val json = JSONObject().apply {
             put("email", email)
             put("password", password)
@@ -73,8 +74,8 @@ object AuthClient {
         }
     }
     fun signOut(accessToken: String): Pair<Int, String> {
-        val url = "${BuildConfig.SUPABASE_URL}/auth/v1/logout"
-
+        //val url = "${BuildConfig.SUPABASE_URL}/auth/v1/logout"
+        val url = "$BASE_URL/auth/v1/logout"
         // Supabase logout expects a POST; an empty JSON body is fine.
         val emptyBody = "{}".toRequestBody("application/json".toMediaType())
 
