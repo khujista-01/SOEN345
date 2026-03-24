@@ -11,11 +11,11 @@ import com.soen345.ticketreservation.admin.AdminConstants
 
 @Composable
 fun AdminGateScreen(
-    onAdminAccessGranted: () -> Unit,
-    onBackToNormal: () -> Unit
+    onSuccess: () -> Unit,
+    onBack: () -> Unit
 ) {
     var adminCode by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier
@@ -24,23 +24,11 @@ fun AdminGateScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(
-            text = "Admin Access",
-            style = MaterialTheme.typography.headlineLarge,
-            modifier = Modifier.padding(bottom = 24.dp)
-        )
-
-        Text(
-            text = "Enter admin code to access event management",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(bottom = 32.dp)
-        )
-
         OutlinedTextField(
             value = adminCode,
             onValueChange = {
                 adminCode = it
-                errorMessage = ""
+                errorMessage = null
             },
             label = { Text("Admin Code") },
             visualTransformation = PasswordVisualTransformation(),
@@ -50,9 +38,9 @@ fun AdminGateScreen(
             singleLine = true
         )
 
-        if (errorMessage.isNotEmpty()) {
+        if (errorMessage != null) {
             Text(
-                text = errorMessage,
+                text = errorMessage!!,
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(bottom = 16.dp)
@@ -62,10 +50,10 @@ fun AdminGateScreen(
         Button(
             onClick = {
                 if (adminCode == AdminConstants.ADMIN_CODE) {
-                    onAdminAccessGranted()
+                    errorMessage = null
+                    onSuccess()
                 } else {
-                    errorMessage = "Invalid admin code"
-                    adminCode = ""
+                    errorMessage = "Wrong admin code"
                 }
             },
             modifier = Modifier
@@ -76,10 +64,10 @@ fun AdminGateScreen(
         }
 
         TextButton(
-            onClick = onBackToNormal,
+            onClick = onBack,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Back to Normal View")
+            Text("Back")
         }
     }
 }
