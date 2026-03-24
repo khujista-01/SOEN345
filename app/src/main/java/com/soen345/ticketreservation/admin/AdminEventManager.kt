@@ -4,6 +4,13 @@ class AdminEventManager {
 
     private val events = mutableMapOf<String, AdminEvent>()
 
+    private val categories = mutableMapOf(
+        "academic" to EventCategory("academic", "Academic"),
+        "workshop" to EventCategory("workshop", "Workshop"),
+        "concert" to EventCategory("concert", "Concert"),
+        "sports" to EventCategory("sports", "Sports")
+    )
+
     fun addEvent(event: AdminEvent): Boolean {
         if (!isValid(event)) return false
         if (events.containsKey(event.id)) return false
@@ -21,8 +28,8 @@ class AdminEventManager {
     }
 
     fun cancelEvent(eventId: String): Boolean {
-        val existingEvent = events[eventId] ?: return false
-        events[eventId] = existingEvent.copy(isCancelled = true)
+        val existing = events[eventId] ?: return false
+        events[eventId] = existing.copy(isCancelled = true)
         return true
     }
 
@@ -34,9 +41,17 @@ class AdminEventManager {
         return events.containsKey(eventId)
     }
 
+    fun getAllCategories(): List<EventCategory> {
+        return categories.values.toList()
+    }
+
     private fun isValid(event: AdminEvent): Boolean {
         return event.title.isNotBlank() &&
+                event.description.isNotBlank() &&
+                event.location.isNotBlank() &&
+                event.date.isNotBlank() &&
                 event.price >= 0.0 &&
-                event.availableTickets >= 0
+                event.availableTickets >= 0 &&
+                categories.containsKey(event.categoryId)
     }
 }

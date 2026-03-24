@@ -64,11 +64,11 @@ class AdminEventManagerTest {
             id = "event-5",
             title = "Edited Title",
             description = "Edited Description",
-            category = "Workshop",
             location = "EV Building",
             date = "2026-04-15",
             availableTickets = 75,
             price = 49.99,
+            categoryId = "workshop",
             isCancelled = false
         )
 
@@ -79,7 +79,7 @@ class AdminEventManagerTest {
         assertNotNull("Expected edited event to still exist", stored)
         assertEquals("Edited Title", stored?.title)
         assertEquals("Edited Description", stored?.description)
-        assertEquals("Workshop", stored?.category)
+        assertEquals("workshop", stored?.categoryId)
         assertEquals("EV Building", stored?.location)
         assertEquals("2026-04-15", stored?.date)
         assertEquals(75, stored?.availableTickets)
@@ -117,22 +117,22 @@ class AdminEventManagerTest {
         id: String,
         title: String = "SOEN 345 Guest Speaker",
         description: String = "Software engineering best practices talk.",
-        category: String = "Academic",
         location: String = "Hall Building",
         date: String = "2026-03-30",
         availableTickets: Int = 100,
         price: Double = 15.0,
+        categoryId: String = "academic",
         isCancelled: Boolean = false
     ): AdminEvent {
         return AdminEvent(
             id = id,
             title = title,
             description = description,
-            category = category,
             location = location,
             date = date,
             availableTickets = availableTickets,
             price = price,
+            categoryId = categoryId,
             isCancelled = isCancelled
         )
     }
