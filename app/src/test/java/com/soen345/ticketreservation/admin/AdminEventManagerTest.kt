@@ -4,13 +4,20 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 
 class AdminEventManagerTest {
 
+    private lateinit var manager: AdminEventManager
+
+    @Before
+    fun setUp() {
+        manager = AdminEventManager()
+    }
+
     @Test
     fun `adding a valid event succeeds`() {
-        val manager = FakeInMemoryAdminEventManager()
         val event = validEvent(id = "event-1")
 
         val added = manager.addEvent(event)
@@ -21,7 +28,6 @@ class AdminEventManagerTest {
 
     @Test
     fun `adding an event with empty title fails`() {
-        val manager = FakeInMemoryAdminEventManager()
         val event = validEvent(id = "event-2", title = "")
 
         val added = manager.addEvent(event)
@@ -32,7 +38,6 @@ class AdminEventManagerTest {
 
     @Test
     fun `adding an event with invalid price fails`() {
-        val manager = FakeInMemoryAdminEventManager()
         val event = validEvent(id = "event-3", price = -10.0)
 
         val added = manager.addEvent(event)
@@ -43,7 +48,6 @@ class AdminEventManagerTest {
 
     @Test
     fun `adding an event with negative available tickets fails`() {
-        val manager = FakeInMemoryAdminEventManager()
         val event = validEvent(id = "event-4", availableTickets = -1)
 
         val added = manager.addEvent(event)
@@ -54,7 +58,6 @@ class AdminEventManagerTest {
 
     @Test
     fun `editing an existing event updates its fields correctly`() {
-        val manager = FakeInMemoryAdminEventManager()
         manager.addEvent(validEvent(id = "event-5"))
 
         val updatedEvent = AdminEvent(
@@ -85,7 +88,6 @@ class AdminEventManagerTest {
 
     @Test
     fun `editing a non-existing event fails`() {
-        val manager = FakeInMemoryAdminEventManager()
         val updatedEvent = validEvent(id = "missing-event", title = "Updated")
 
         val edited = manager.editEvent(updatedEvent)
@@ -95,7 +97,6 @@ class AdminEventManagerTest {
 
     @Test
     fun `canceling an existing event marks it as canceled`() {
-        val manager = FakeInMemoryAdminEventManager()
         manager.addEvent(validEvent(id = "event-6"))
 
         val cancelled = manager.cancelEvent("event-6")
@@ -107,8 +108,6 @@ class AdminEventManagerTest {
 
     @Test
     fun `canceling a non-existing event fails`() {
-        val manager = FakeInMemoryAdminEventManager()
-
         val cancelled = manager.cancelEvent("missing-event")
 
         assertFalse("Expected cancel to fail for non-existing event", cancelled)
@@ -136,54 +135,5 @@ class AdminEventManagerTest {
             price = price,
             isCancelled = isCancelled
         )
-    }
-}
-
-data class AdminEvent(
-    val id: String,
-    val title: String,
-    val description: String,
-    val category: String,
-    val location: String,
-    val date: String,
-    val availableTickets: Int,
-    val price: Double,
-    val isCancelled: Boolean
-)
-
-class FakeInMemoryAdminEventManager {
-
-    private val events = mutableMapOf<String, AdminEvent>()
-
-    fun addEvent(event: AdminEvent): Boolean {
-        if (!isValid(event)) return false
-        if (events.containsKey(event.id)) return false
-
-        events[event.id] = event
-        return true
-    }
-
-    fun editEvent(updatedEvent: AdminEvent): Boolean {
-        if (!isValid(updatedEvent)) return false
-        if (!events.containsKey(updatedEvent.id)) return false
-
-        events[updatedEvent.id] = updatedEvent
-        return true
-    }
-
-    fun cancelEvent(eventId: String): Boolean {
-        val existing = events[eventId] ?: return false
-        events[eventId] = existing.copy(isCancelled = true)
-        return true
-    }
-
-    fun getEventById(eventId: String): AdminEvent? = events[eventId]
-
-    fun contains(eventId: String): Boolean = events.containsKey(eventId)
-
-    private fun isValid(event: AdminEvent): Boolean {
-        return event.title.isNotBlank() &&
-            event.price >= 0.0 &&
-            event.availableTickets >= 0
     }
 }
