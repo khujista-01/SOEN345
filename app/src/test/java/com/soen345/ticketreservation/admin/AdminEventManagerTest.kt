@@ -2,9 +2,9 @@ package com.soen345.ticketreservation.admin
 
 import org.junit.Before
 import org.junit.Test
+import org.junit.Assert.assertThrows
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
-import kotlin.test.assertThrows
 
 class AdminEventManagerTest {
     private lateinit var manager: AdminEventManager
@@ -37,7 +37,7 @@ class AdminEventManagerTest {
     @Test
     fun testAddEventWithBlankId() {
         val invalidEvent = validEvent.copy(id = "")
-        val exception = assertThrows<IllegalArgumentException> {
+        val exception = assertThrows(IllegalArgumentException::class.java) {
             manager.addEvent(invalidEvent)
         }
         assertEquals("Event ID cannot be empty", exception.message)
@@ -46,7 +46,7 @@ class AdminEventManagerTest {
     @Test
     fun testAddEventWithBlankTitle() {
         val invalidEvent = validEvent.copy(title = "")
-        val exception = assertThrows<IllegalArgumentException> {
+        val exception = assertThrows(IllegalArgumentException::class.java) {
             manager.addEvent(invalidEvent)
         }
         assertEquals("Event title cannot be empty", exception.message)
@@ -55,7 +55,7 @@ class AdminEventManagerTest {
     @Test
     fun testAddEventWithWhitespaceTitle() {
         val invalidEvent = validEvent.copy(title = "   ")
-        val exception = assertThrows<IllegalArgumentException> {
+        val exception = assertThrows(IllegalArgumentException::class.java) {
             manager.addEvent(invalidEvent)
         }
         assertEquals("Event title cannot be empty", exception.message)
@@ -64,7 +64,7 @@ class AdminEventManagerTest {
     @Test
     fun testAddEventWithBlankDescription() {
         val invalidEvent = validEvent.copy(description = "")
-        val exception = assertThrows<IllegalArgumentException> {
+        val exception = assertThrows(IllegalArgumentException::class.java) {
             manager.addEvent(invalidEvent)
         }
         assertEquals("Event description cannot be empty", exception.message)
@@ -73,7 +73,7 @@ class AdminEventManagerTest {
     @Test
     fun testAddEventWithBlankCategory() {
         val invalidEvent = validEvent.copy(categoryId = "")
-        val exception = assertThrows<IllegalArgumentException> {
+        val exception = assertThrows(IllegalArgumentException::class.java) {
             manager.addEvent(invalidEvent)
         }
         assertEquals("Event category cannot be empty", exception.message)
@@ -82,7 +82,7 @@ class AdminEventManagerTest {
     @Test
     fun testAddEventWithBlankLocation() {
         val invalidEvent = validEvent.copy(location = "")
-        val exception = assertThrows<IllegalArgumentException> {
+        val exception = assertThrows(IllegalArgumentException::class.java) {
             manager.addEvent(invalidEvent)
         }
         assertEquals("Event location cannot be empty", exception.message)
@@ -91,7 +91,7 @@ class AdminEventManagerTest {
     @Test
     fun testAddEventWithBlankDate() {
         val invalidEvent = validEvent.copy(date = "")
-        val exception = assertThrows<IllegalArgumentException> {
+        val exception = assertThrows(IllegalArgumentException::class.java) {
             manager.addEvent(invalidEvent)
         }
         assertEquals("Event date cannot be empty", exception.message)
@@ -100,7 +100,7 @@ class AdminEventManagerTest {
     @Test
     fun testAddEventWithNegativePrice() {
         val invalidEvent = validEvent.copy(price = -10.0)
-        val exception = assertThrows<IllegalArgumentException> {
+        val exception = assertThrows(IllegalArgumentException::class.java) {
             manager.addEvent(invalidEvent)
         }
         assertEquals("Event price cannot be negative", exception.message)
@@ -109,7 +109,7 @@ class AdminEventManagerTest {
     @Test
     fun testAddEventWithNegativeTickets() {
         val invalidEvent = validEvent.copy(availableTickets = -5)
-        val exception = assertThrows<IllegalArgumentException> {
+        val exception = assertThrows(IllegalArgumentException::class.java) {
             manager.addEvent(invalidEvent)
         }
         assertEquals("Available tickets cannot be negative", exception.message)
@@ -118,7 +118,7 @@ class AdminEventManagerTest {
     @Test
     fun testAddEventWithDuplicateId() {
         manager.addEvent(validEvent)
-        val exception = assertThrows<IllegalStateException> {
+        val exception = assertThrows(IllegalStateException::class.java) {
             manager.addEvent(validEvent)
         }
         assertEquals("Event with ID event1 already exists", exception.message)
@@ -141,7 +141,7 @@ class AdminEventManagerTest {
     fun testEditEventWithBlankTitle() {
         manager.addEvent(validEvent)
         val invalidEvent = validEvent.copy(title = "")
-        val exception = assertThrows<IllegalArgumentException> {
+        val exception = assertThrows(IllegalArgumentException::class.java) {
             manager.editEvent(invalidEvent)
         }
         assertEquals("Event title cannot be empty", exception.message)
@@ -151,7 +151,7 @@ class AdminEventManagerTest {
     fun testEditEventWithBlankDescription() {
         manager.addEvent(validEvent)
         val invalidEvent = validEvent.copy(description = "")
-        val exception = assertThrows<IllegalArgumentException> {
+        val exception = assertThrows(IllegalArgumentException::class.java) {
             manager.editEvent(invalidEvent)
         }
         assertEquals("Event description cannot be empty", exception.message)
@@ -161,7 +161,7 @@ class AdminEventManagerTest {
     fun testEditEventWithBlankCategory() {
         manager.addEvent(validEvent)
         val invalidEvent = validEvent.copy(categoryId = "")
-        val exception = assertThrows<IllegalArgumentException> {
+        val exception = assertThrows(IllegalArgumentException::class.java) {
             manager.editEvent(invalidEvent)
         }
         assertEquals("Event category cannot be empty", exception.message)
@@ -171,7 +171,7 @@ class AdminEventManagerTest {
     fun testEditEventWithBlankLocation() {
         manager.addEvent(validEvent)
         val invalidEvent = validEvent.copy(location = "")
-        val exception = assertThrows<IllegalArgumentException> {
+        val exception = assertThrows(IllegalArgumentException::class.java) {
             manager.editEvent(invalidEvent)
         }
         assertEquals("Event location cannot be empty", exception.message)
@@ -181,7 +181,7 @@ class AdminEventManagerTest {
     fun testEditEventWithBlankDate() {
         manager.addEvent(validEvent)
         val invalidEvent = validEvent.copy(date = "")
-        val exception = assertThrows<IllegalArgumentException> {
+        val exception = assertThrows(IllegalArgumentException::class.java) {
             manager.editEvent(invalidEvent)
         }
         assertEquals("Event date cannot be empty", exception.message)
@@ -191,7 +191,7 @@ class AdminEventManagerTest {
     fun testEditEventWithNegativePrice() {
         manager.addEvent(validEvent)
         val invalidEvent = validEvent.copy(price = -5.0)
-        val exception = assertThrows<IllegalArgumentException> {
+        val exception = assertThrows(IllegalArgumentException::class.java) {
             manager.editEvent(invalidEvent)
         }
         assertEquals("Event price cannot be negative", exception.message)
@@ -201,7 +201,7 @@ class AdminEventManagerTest {
     fun testEditEventWithNegativeTickets() {
         manager.addEvent(validEvent)
         val invalidEvent = validEvent.copy(availableTickets = -10)
-        val exception = assertThrows<IllegalArgumentException> {
+        val exception = assertThrows(IllegalArgumentException::class.java) {
             manager.editEvent(invalidEvent)
         }
         assertEquals("Available tickets cannot be negative", exception.message)
@@ -210,7 +210,7 @@ class AdminEventManagerTest {
     @Test
     fun testEditEventNotFound() {
         val nonExistentEvent = validEvent.copy(id = "nonexistent")
-        val exception = assertThrows<IllegalStateException> {
+        val exception = assertThrows(IllegalStateException::class.java) {
             manager.editEvent(nonExistentEvent)
         }
         assertEquals("Event with ID nonexistent does not exist", exception.message)
@@ -238,7 +238,7 @@ class AdminEventManagerTest {
 
     @Test
     fun testCancelEventNotFound() {
-        val exception = assertThrows<IllegalStateException> {
+        val exception = assertThrows(IllegalStateException::class.java) {
             manager.cancelEvent("nonexistent")
         }
         assertEquals("Event with ID nonexistent does not exist", exception.message)
