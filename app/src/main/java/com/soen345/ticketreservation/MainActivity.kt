@@ -44,7 +44,9 @@ import com.soen345.ticketreservation.ui.theme.TicketReservationTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.soen345.ticketreservation.ui.events_page.AdminEventScreen
 import com.soen345.ticketreservation.ui.events_page.EventsDummyScreen
+import androidx.compose.runtime.LaunchedEffect
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,6 +68,8 @@ private fun AppRoot() {
 
     var session by remember { mutableStateOf<AuthClient.AuthSession?>(null) }
     var mode by remember { mutableStateOf(AuthMode.LOGIN) }
+    var isAdmin by remember { mutableStateOf<Boolean?>(null) }
+    var adminCheckMessage by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
@@ -88,6 +92,8 @@ private fun AppRoot() {
                                         AuthClient.signOut(token)
                                     }
                                     session = null
+                                    isAdmin = null
+                                    adminCheckMessage = null
                                 }
                             }
                         ) {
@@ -110,20 +116,76 @@ private fun AppRoot() {
 
                 when (mode) {
                     AuthMode.LOGIN -> LoginCard(
-                        onLoginSuccess = { session = it }
+                        onLoginSuccess = {
+                            session = it
+                            isAdmin = null
+                            adminCheckMessage = null
+                        }
                     )
 
                     AuthMode.REGISTER -> RegisterCard(
                         onRegisterSuccess = {
-                            if (it.accessToken.isNotBlank()) session = it
+                            if (it.accessToken.isNotBlank()) {
+                                session = it
+                                isAdmin = null
+                                adminCheckMessage = null
+                            }
                         }
                     )
                 }
             } else {
-                EventsDummyScreen(
-                    userId = session!!.userId,
-                    userAccessToken = session!!.accessToken
-                )
+                LaunchedEffect(session!!.userId, session!!.accessToken) {
+                    val (code, adminFlag) = withContext(Dispatchers.IO) {
+                        SupabaseClient.fetchCurrentUserIsAdmin(
+                            accessToken = session!!.accessToken,
+                            userId = session!!.userId
+                        )
+                    }
+
+                    if (code in 200..299) {
+                        isAdmin = adminFlag
+                        adminCheckMessage = null
+                    } else {
+                        isAdmin = false
+                        adminCheckMessage = "Could not verify admin access; using regular user view."
+                    }
+                }
+
+                when (isAdmin) {
+                    null -> {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            CircularProgressIndicator(strokeWidth = 2.dp)
+                            Text("Checking account access...")
+                        }
+                    }
+
+                    true -> {
+                        AdminEventScreen(
+                            accessToken = session!!.accessToken,
+                            isAdmin = true
+                        )
+                    }
+
+                    false -> {
+                        adminCheckMessage?.let {
+                            Text(
+                                text = it,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                        }
+
+                        EventsDummyScreen(
+                            userId = session!!.userId,
+                            userAccessToken = session!!.accessToken
+                        )
+                    }
+                }
             }
         }
     }
