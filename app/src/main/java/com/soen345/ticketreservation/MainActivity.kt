@@ -45,6 +45,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.soen345.ticketreservation.ui.events_page.EventsDummyScreen
+import com.soen345.ticketreservation.admin.AdminEventManager
+import com.soen345.ticketreservation.ui.admin.AdminGateScreen
+import com.soen345.ticketreservation.ui.admin.AdminEventScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,6 +61,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class AuthMode { LOGIN, REGISTER }
+private enum class AppMode { NORMAL, ADMIN_GATE, ADMIN }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,6 +70,8 @@ private fun AppRoot() {
 
     var session by remember { mutableStateOf<AuthClient.AuthSession?>(null) }
     var mode by remember { mutableStateOf(AuthMode.LOGIN) }
+    var appMode by remember { mutableStateOf(AppMode.NORMAL) }
+    val adminEventManager = remember { AdminEventManager() }
 
     Scaffold(
         topBar = {
@@ -76,11 +82,19 @@ private fun AppRoot() {
                 ),
                 actions = {
                     if (session != null) {
+                        if (appMode == AppMode.NORMAL) {
+                            TextButton(
+                                onClick = { appMode = AppMode.ADMIN_GATE }
+                            ) {
+                                Text("Admin")
+                            }
+                        }
                         TextButton(
                             onClick = {
                                 val token = session?.accessToken.orEmpty()
                                 if (token.isBlank()) {
                                     session = null
+                                    appMode = AppMode.NORMAL
                                     return@TextButton
                                 }
                                 scope.launch {
@@ -88,6 +102,7 @@ private fun AppRoot() {
                                         AuthClient.signOut(token)
                                     }
                                     session = null
+                                    appMode = AppMode.NORMAL
                                 }
                             }
                         ) {
@@ -120,10 +135,20 @@ private fun AppRoot() {
                     )
                 }
             } else {
-                EventsDummyScreen(
-                    userId = session!!.userId,
-                    userAccessToken = session!!.accessToken
-                )
+                when (appMode) {
+                    AppMode.NORMAL -> EventsDummyScreen(
+                        userId = session!!.userId,
+                        userAccessToken = session!!.accessToken
+                    )
+                    AppMode.ADMIN_GATE -> AdminGateScreen(
+                        onAdminAccessGranted = { appMode = AppMode.ADMIN },
+                        onBackToNormal = { appMode = AppMode.NORMAL }
+                    )
+                    AppMode.ADMIN -> AdminEventScreen(
+                        manager = adminEventManager,
+                        onBackToNormal = { appMode = AppMode.NORMAL }
+                    )
+                }
             }
         }
     }
