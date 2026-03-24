@@ -141,12 +141,11 @@ private fun AppRoot() {
                         userAccessToken = session!!.accessToken
                     )
                     AppMode.ADMIN_GATE -> AdminGateScreen(
-                        onAdminAccessGranted = { appMode = AppMode.ADMIN },
-                        onBackToNormal = { appMode = AppMode.NORMAL }
+                        onSuccess = { appMode = AppMode.ADMIN },
+                        onBack = { appMode = AppMode.NORMAL }
                     )
                     AppMode.ADMIN -> AdminEventScreen(
-                        manager = adminEventManager,
-                        onBackToNormal = { appMode = AppMode.NORMAL }
+                        manager = adminEventManager
                     )
                 }
             }
