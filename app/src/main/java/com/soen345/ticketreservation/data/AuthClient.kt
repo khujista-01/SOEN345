@@ -10,7 +10,7 @@ import org.json.JSONObject
 object AuthClient {
 
     private const val TAG = "AUTH"
-    private const val BASE_URL = "https://lxcsvuijrpfwegviftpw.supabase.co"
+    internal var BASE_URL = "https://lxcsvuijrpfwegviftpw.supabase.co"
     private const val ANON_KEY = "sb_publishable_IDfQIdGV8WhE-e7xOTNngw_j2cUsUUo"
 
     internal var http: OkHttpClient = OkHttpClient()
