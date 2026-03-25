@@ -1,7 +1,6 @@
 package com.soen345.ticketreservation.data
 
 import android.util.Log
-import com.soen345.ticketreservation.BuildConfig
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -11,8 +10,11 @@ import org.json.JSONObject
 object AuthClient {
 
     private const val TAG = "AUTH"
+    private const val BASE_URL = "https://lxcsvuijrpfwegviftpw.supabase.co"
+    private const val ANON_KEY = "sb_publishable_IDfQIdGV8WhE-e7xOTNngw_j2cUsUUo"
+
     internal var http: OkHttpClient = OkHttpClient()
-    var BASE_URL: String = BuildConfig.SUPABASE_URL
+
     data class AuthSession(
         val userId: String,
         val email: String,
@@ -20,7 +22,6 @@ object AuthClient {
     )
 
     fun signUp(email: String, password: String): Pair<Int, String> {
-       // val url = "${BuildConfig.SUPABASE_URL}/auth/v1/signup"
         val url = "$BASE_URL/auth/v1/signup"
 
         val json = JSONObject().apply {
@@ -28,10 +29,12 @@ object AuthClient {
             put("password", password)
         }
 
+        Log.d(TAG, "Using BASE_URL=$BASE_URL")
+
         val req = Request.Builder()
             .url(url)
             .post(json.toString().toRequestBody("application/json".toMediaType()))
-            .addHeader("apikey", BuildConfig.SUPABASE_ANON_KEY)
+            .addHeader("apikey", ANON_KEY)
             .addHeader("Content-Type", "application/json")
             .build()
 
@@ -43,17 +46,19 @@ object AuthClient {
     }
 
     fun signIn(email: String, password: String): AuthSession? {
-        //val url = "${BuildConfig.SUPABASE_URL}/auth/v1/token?grant_type=password"
         val url = "$BASE_URL/auth/v1/token?grant_type=password"
+
         val json = JSONObject().apply {
             put("email", email)
             put("password", password)
         }
 
+        Log.d(TAG, "Using BASE_URL=$BASE_URL")
+
         val req = Request.Builder()
             .url(url)
             .post(json.toString().toRequestBody("application/json".toMediaType()))
-            .addHeader("apikey", BuildConfig.SUPABASE_ANON_KEY)
+            .addHeader("apikey", ANON_KEY)
             .addHeader("Content-Type", "application/json")
             .build()
 
@@ -73,16 +78,15 @@ object AuthClient {
             return AuthSession(userId = userId, email = em, accessToken = accessToken)
         }
     }
+
     fun signOut(accessToken: String): Pair<Int, String> {
-        //val url = "${BuildConfig.SUPABASE_URL}/auth/v1/logout"
         val url = "$BASE_URL/auth/v1/logout"
-        // Supabase logout expects a POST; an empty JSON body is fine.
         val emptyBody = "{}".toRequestBody("application/json".toMediaType())
 
         val req = Request.Builder()
             .url(url)
             .post(emptyBody)
-            .addHeader("apikey", BuildConfig.SUPABASE_ANON_KEY)
+            .addHeader("apikey", ANON_KEY)
             .addHeader("Authorization", "Bearer $accessToken")
             .addHeader("Content-Type", "application/json")
             .build()
