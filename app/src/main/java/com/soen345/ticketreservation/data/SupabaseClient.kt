@@ -148,7 +148,7 @@ object SupabaseClient {
 
     suspend fun insertAdminEvent(event: AdminEvent, accessToken: String): Pair<Boolean, String> =
         withContext(Dispatchers.IO) {
-            val body = adminEventToJson(event, includeId = true)
+            val body = adminEventToJson(event, includeId = false)
                 .toString()
                 .toRequestBody("application/json".toMediaType())
 
