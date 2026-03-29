@@ -44,7 +44,7 @@ import com.soen345.ticketreservation.ui.theme.TicketReservationTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.soen345.ticketreservation.ui.events_page.EventsDummyScreen
+import com.soen345.ticketreservation.ui.events_page.EventsLoadingScreen
 import com.soen345.ticketreservation.admin.AdminEventManager
 import com.soen345.ticketreservation.ui.admin.AdminGateScreen
 import com.soen345.ticketreservation.ui.admin.AdminEventScreen
@@ -140,7 +140,7 @@ private fun AppRoot() {
                 }
             } else {
                 when (appMode) {
-                    AppMode.NORMAL -> EventsDummyScreen(
+                    AppMode.NORMAL -> EventsLoadingScreen(
                         userId = session!!.userId,
                         userAccessToken = session!!.accessToken
                     )
