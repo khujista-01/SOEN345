@@ -152,6 +152,7 @@ private fun AppRoot() {
 
                     AppMode.ADMIN -> AdminEventScreen(
                         manager = adminEventManager,
+                        accessToken = session!!.accessToken,
                         onBackToNormal = { appMode = AppMode.NORMAL }
                     )
                 }

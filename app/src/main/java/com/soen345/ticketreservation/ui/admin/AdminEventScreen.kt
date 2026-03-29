@@ -17,20 +17,27 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.soen345.ticketreservation.admin.AdminEvent
 import com.soen345.ticketreservation.admin.AdminEventManager
+import com.soen345.ticketreservation.data.SupabaseClient
+import kotlinx.coroutines.launch
 
 @Composable
 fun AdminEventScreen(
     manager: AdminEventManager,
+    accessToken: String,
     onBackToNormal: () -> Unit
 ) {
+    val scope = rememberCoroutineScope()
+
     var id by remember { mutableStateOf("") }
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -40,12 +47,39 @@ fun AdminEventScreen(
     var price by remember { mutableStateOf("") }
     var availableTickets by remember { mutableStateOf("") }
 
-    var events by remember { mutableStateOf(manager.getAllEvents()) }
+    var events by remember { mutableStateOf(emptyList<AdminEvent>()) }
     var message by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
+    var loading by remember { mutableStateOf(false) }
 
-    fun refreshEvents() {
-        events = manager.getAllEvents()
+    fun showSuccess(text: String) {
+        isError = false
+        message = text
+    }
+
+    fun showError(text: String) {
+        isError = true
+        message = text
+    }
+
+    suspend fun refreshEventsFromSupabase(successMessage: String? = null) {
+        loading = true
+        val (fetchedEvents, error) = SupabaseClient.fetchAdminEvents(accessToken)
+        loading = false
+
+        if (error != null) {
+            showError(error)
+            return
+        }
+
+        events = fetchedEvents.orEmpty()
+        if (successMessage != null) {
+            showSuccess(successMessage)
+        }
+    }
+
+    LaunchedEffect(accessToken) {
+        refreshEventsFromSupabase()
     }
 
     fun buildEventFromForm(): AdminEvent {
@@ -64,16 +98,6 @@ fun AdminEventScreen(
             availableTickets = parsedTickets,
             price = parsedPrice
         )
-    }
-
-    fun showSuccess(text: String) {
-        isError = false
-        message = text
-    }
-
-    fun showError(text: String) {
-        isError = true
-        message = text
     }
 
     Column(
@@ -158,9 +182,18 @@ fun AdminEventScreen(
             Button(
                 onClick = {
                     try {
-                        manager.addEvent(buildEventFromForm())
-                        refreshEvents()
-                        showSuccess("Event added successfully.")
+                        val event = buildEventFromForm()
+                        scope.launch {
+                            loading = true
+                            val (success, resultMessage) = SupabaseClient.insertAdminEvent(event, accessToken)
+                            loading = false
+
+                            if (success) {
+                                refreshEventsFromSupabase("Event added successfully.")
+                            } else {
+                                showError(resultMessage)
+                            }
+                        }
                     } catch (e: Exception) {
                         showError(e.message ?: "Failed to add event.")
                     }
@@ -173,9 +206,18 @@ fun AdminEventScreen(
             Button(
                 onClick = {
                     try {
-                        manager.editEvent(buildEventFromForm())
-                        refreshEvents()
-                        showSuccess("Event edited successfully.")
+                        val event = buildEventFromForm()
+                        scope.launch {
+                            loading = true
+                            val (success, resultMessage) = SupabaseClient.updateAdminEvent(event, accessToken)
+                            loading = false
+
+                            if (success) {
+                                refreshEventsFromSupabase("Event edited successfully.")
+                            } else {
+                                showError(resultMessage)
+                            }
+                        }
                     } catch (e: Exception) {
                         showError(e.message ?: "Failed to edit event.")
                     }
@@ -188,12 +230,20 @@ fun AdminEventScreen(
 
         Button(
             onClick = {
-                try {
-                    manager.cancelEvent(id)
-                    refreshEvents()
-                    showSuccess("Event cancelled successfully.")
-                } catch (e: Exception) {
-                    showError(e.message ?: "Failed to cancel event.")
+                if (id.isBlank()) {
+                    showError("Event ID is required to cancel")
+                } else {
+                    scope.launch {
+                        loading = true
+                        val (success, resultMessage) = SupabaseClient.cancelAdminEvent(id, accessToken)
+                        loading = false
+
+                        if (success) {
+                            refreshEventsFromSupabase("Event cancelled successfully.")
+                        } else {
+                            showError(resultMessage)
+                        }
+                    }
                 }
             },
             modifier = Modifier.fillMaxWidth()
@@ -212,6 +262,13 @@ fun AdminEventScreen(
             Text(
                 text = message,
                 color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+
+        if (loading) {
+            Text(
+                text = "Loading events...",
                 style = MaterialTheme.typography.bodyMedium
             )
         }
