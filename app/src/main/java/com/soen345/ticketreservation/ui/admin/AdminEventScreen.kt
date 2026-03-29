@@ -28,7 +28,8 @@ import com.soen345.ticketreservation.admin.AdminEventManager
 
 @Composable
 fun AdminEventScreen(
-    manager: AdminEventManager
+    manager: AdminEventManager,
+    onBackToNormal: () -> Unit
 ) {
     var id by remember { mutableStateOf("") }
     var title by remember { mutableStateOf("") }
@@ -198,6 +199,13 @@ fun AdminEventScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Cancel Event")
+        }
+
+        Button(
+            onClick = onBackToNormal,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Back to Normal View")
         }
 
         if (message.isNotBlank()) {

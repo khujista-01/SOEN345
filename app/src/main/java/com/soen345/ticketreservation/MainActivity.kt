@@ -17,7 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -98,9 +98,7 @@ private fun AppRoot() {
                                     return@TextButton
                                 }
                                 scope.launch {
-                                    withContext(Dispatchers.IO) {
-                                        AuthClient.signOut(token)
-                                    }
+                                    AuthClient.signOut(token)
                                     session = null
                                     appMode = AppMode.NORMAL
                                 }
@@ -125,12 +123,18 @@ private fun AppRoot() {
 
                 when (mode) {
                     AuthMode.LOGIN -> LoginCard(
-                        onLoginSuccess = { session = it }
+                        onLoginSuccess = {
+                            session = it
+                            appMode = AppMode.NORMAL
+                        }
                     )
 
                     AuthMode.REGISTER -> RegisterCard(
                         onRegisterSuccess = {
-                            if (it.accessToken.isNotBlank()) session = it
+                            if (it.accessToken.isNotBlank()) {
+                                session = it
+                                appMode = AppMode.NORMAL
+                            }
                         }
                     )
                 }
@@ -140,12 +144,15 @@ private fun AppRoot() {
                         userId = session!!.userId,
                         userAccessToken = session!!.accessToken
                     )
+
                     AppMode.ADMIN_GATE -> AdminGateScreen(
                         onSuccess = { appMode = AppMode.ADMIN },
                         onBack = { appMode = AppMode.NORMAL }
                     )
+
                     AppMode.ADMIN -> AdminEventScreen(
-                        manager = adminEventManager
+                        manager = adminEventManager,
+                        onBackToNormal = { appMode = AppMode.NORMAL }
                     )
                 }
             }
@@ -189,7 +196,7 @@ private fun LoginCard(onLoginSuccess: (AuthClient.AuthSession) -> Unit) {
             Text("Welcome back", style = MaterialTheme.typography.titleLarge)
             Text("Login with your email and password.", style = MaterialTheme.typography.bodyMedium)
 
-            HorizontalDivider()
+            Divider()
 
             OutlinedTextField(
                 value = email,
@@ -231,9 +238,7 @@ private fun LoginCard(onLoginSuccess: (AuthClient.AuthSession) -> Unit) {
 
                     loading = true
                     scope.launch {
-                        val sess = withContext(Dispatchers.IO) {
-                            AuthClient.signIn(email, password)
-                        }
+                        val sess = AuthClient.signIn(email, password)
 
                         loading = false
 
@@ -248,7 +253,10 @@ private fun LoginCard(onLoginSuccess: (AuthClient.AuthSession) -> Unit) {
                 enabled = !loading,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
                     if (loading) CircularProgressIndicator(strokeWidth = 2.dp)
                     Text(if (loading) "Logging in…" else "Login")
                 }
@@ -286,7 +294,7 @@ private fun RegisterCard(onRegisterSuccess: (AuthClient.AuthSession) -> Unit) {
             Text("Create an account", style = MaterialTheme.typography.titleLarge)
             Text("Register with Supabase Auth, then store your profile in the database.", style = MaterialTheme.typography.bodyMedium)
 
-            HorizontalDivider()
+            Divider()
 
             OutlinedTextField(
                 value = fullName,
@@ -366,21 +374,17 @@ private fun RegisterCard(onRegisterSuccess: (AuthClient.AuthSession) -> Unit) {
 
                     loading = true
                     scope.launch {
-                        // 1️⃣ Sign up
-                        val signUpResult = withContext(Dispatchers.IO) {
-                            AuthClient.signUp(email, password)
-                        }
+                        val signUpResult = AuthClient.signUp(email, password)
+
+                        Log.d("AUTH", "signUpResult code=${signUpResult.first} body=${signUpResult.second}")
 
                         if (signUpResult.first !in 200..299) {
                             loading = false
-                            message = "Registration failed. Try a different email."
+                            message = "Registration failed: ${signUpResult.second}"
                             return@launch
                         }
 
-                        // 2️⃣ Immediately sign in to obtain real access token
-                        val sess = withContext(Dispatchers.IO) {
-                            AuthClient.signIn(email, password)
-                        }
+                        val sess = AuthClient.signIn(email, password)
 
                         if (sess == null || sess.accessToken.isBlank()) {
                             loading = false
@@ -390,8 +394,7 @@ private fun RegisterCard(onRegisterSuccess: (AuthClient.AuthSession) -> Unit) {
 
                         Log.d("AUTH", "Signup+Signin userId=${sess.userId} email=${sess.email}")
 
-                        // 3️⃣ Upsert profile row into public.users
-                        val (dbCode, dbBody) = withContext(Dispatchers.IO) {
+                        val (dbCode, _) = withContext(Dispatchers.IO) {
                             SupabaseClient.upsertUserProfile(
                                 accessToken = sess.accessToken,
                                 userId = sess.userId,
@@ -406,7 +409,6 @@ private fun RegisterCard(onRegisterSuccess: (AuthClient.AuthSession) -> Unit) {
                         if (dbCode in 200..299) {
                             successNote = "Registered ✅ Profile saved ✅"
                         } else {
-//                            //logcat note to find and resolve issue
                             successNote = "Registered ✅ (profile save failed — check Logcat)"
                         }
 
@@ -416,7 +418,10 @@ private fun RegisterCard(onRegisterSuccess: (AuthClient.AuthSession) -> Unit) {
                 enabled = !loading,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
                     if (loading) CircularProgressIndicator(strokeWidth = 2.dp)
                     Text(if (loading) "Creating account…" else "Create account")
                 }
@@ -429,6 +434,7 @@ private fun RegisterCard(onRegisterSuccess: (AuthClient.AuthSession) -> Unit) {
         }
     }
 }
+
 private fun isValidEmail(email: String): Boolean {
     return email.contains('@') && email.contains('.') && email.length >= 5
 }
