@@ -28,6 +28,7 @@ class SupabaseClientTest {
         // Mock Android Log to avoid RuntimeException
         mockkStatic(Log::class)
         every { Log.d(any(), any()) } returns 0
+        every { Log.e(any(), any()) } returns 0
         every { Log.e(any(), any(), any()) } returns 0
     }
 
@@ -38,6 +39,12 @@ class SupabaseClientTest {
 
     @Test
     fun `test fetchEvents returns a list`() = runBlocking {
+        mockServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("[]")
+        )
+
         // Mock JSON response for events
         val mockJson = """
             [
@@ -60,7 +67,10 @@ class SupabaseClientTest {
                 .setBody(mockJson)
         )
 
-        val result = SupabaseClient.fetchEvents("fake-token")
+        val result = SupabaseClient.fetchEvents(
+            accessToken = "fake-token",
+            userId = "user1"
+        )
 
         Assert.assertNull(result.errorMessage)
         Assert.assertNotNull(result.events)
@@ -90,7 +100,21 @@ class SupabaseClientTest {
     }
     @Test
     fun `test insertReservation returns true on success`() = runBlocking {
-        mockServer.enqueue(MockResponse().setResponseCode(201))
+        mockServer.enqueue(
+            MockResponse()
+                .setResponseCode(201)
+                .setBody("""[{"event_id":"event1","user_id":"user1"}]""")
+        )
+        mockServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""[{"available_tickets":10}]""")
+        )
+        mockServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""[{"available_tickets":9}]""")
+        )
 
         val result = SupabaseClient.insertReservation("event1", "user1", "fake-token")
         Assert.assertTrue(result)
@@ -105,7 +129,22 @@ class SupabaseClientTest {
 
     @Test
     fun `test deleteReservation returns true on success`() = runBlocking {
-        mockServer.enqueue(MockResponse().setResponseCode(200))
+        mockServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""[{"event_id":"event1","user_id":"user1"}]""")
+        )
+        mockServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""[{"available_tickets":9}]""")
+        )
+        mockServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""[{"available_tickets":10}]""")
+        )
+
         val result = SupabaseClient.deleteReservation("event1", "user1", "fake-token")
         Assert.assertTrue(result)
     }

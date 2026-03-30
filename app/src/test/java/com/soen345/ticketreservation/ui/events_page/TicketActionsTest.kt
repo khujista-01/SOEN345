@@ -30,6 +30,7 @@ class TicketActionsTest {
 
         mockkStatic(Log::class)
         every { Log.d(any(), any()) } returns 0
+        every { Log.e(any(), any()) } returns 0
         every { Log.e(any(), any(), any()) } returns 0
     }
 
@@ -40,7 +41,21 @@ class TicketActionsTest {
 
     @Test
     fun `reserveTicket returns true on success`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(201))
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(201)
+                .setBody("""[{"event_id":"event1","user_id":"user1"}]""")
+        )
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""[{"available_tickets":10}]""")
+        )
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""[{"available_tickets":9}]""")
+        )
 
         val result = TicketActions.reserveTicket("event1", "user1", "token")
 
@@ -58,7 +73,21 @@ class TicketActionsTest {
 
     @Test
     fun `cancelReservation returns true on success`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(200))
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""[{"event_id":"event1","user_id":"user1"}]""")
+        )
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""[{"available_tickets":9}]""")
+        )
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""[{"available_tickets":10}]""")
+        )
 
         val result = TicketActions.cancelReservation("event1", "user1", "token")
 
