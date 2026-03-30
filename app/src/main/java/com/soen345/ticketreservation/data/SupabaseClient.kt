@@ -10,6 +10,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
 import org.json.JSONObject
 
 object SupabaseClient {
@@ -27,31 +28,26 @@ object SupabaseClient {
 
     suspend fun insertReservation(eventId: String, userId: String, accessToken: String): Boolean {
         return withContext(Dispatchers.IO) {
-            val json = JSONObject().apply {
-                put("event_id", eventId)
-                put("user_id", userId)
+            Log.d(TAG, "reserve start eventId=$eventId userId=$userId")
+
+            val reservationInserted = insertReservationRowOnly(eventId, userId, accessToken)
+            if (!reservationInserted) {
+                Log.e(TAG, "reserve failed: reservation row insert failed eventId=$eventId userId=$userId")
+                return@withContext false
+            }
+            Log.d(TAG, "reserve DB update success: reservation row inserted eventId=$eventId userId=$userId")
+
+            val ticketUpdateSucceeded = updateEventTicketCount(eventId, -1, accessToken)
+            if (!ticketUpdateSucceeded) {
+                Log.e(TAG, "reserve failed: ticket count update failed, rolling back reservation eventId=$eventId userId=$userId")
+                val rollbackSuccess = deleteReservationRowOnly(eventId, userId, accessToken)
+                Log.d(TAG, "reserve rollback delete reservation success=$rollbackSuccess eventId=$eventId userId=$userId")
+                return@withContext false
             }
 
-            val requestBody = json.toString().toRequestBody("application/json".toMediaType())
-
-            val request = Request.Builder()
-                .url("$BASE_URL/reservations")
-                .addHeader("apikey", BuildConfig.SUPABASE_ANON_KEY)
-                .addHeader("Authorization", "Bearer $accessToken")
-                .post(requestBody)
-                .build()
-
-            try {
-                http.newCall(request).execute().use { response ->
-                    val body = response.body?.string().orEmpty()
-                    Log.d(TAG, "insertReservation code=${response.code} body=$body")
-                    response.isSuccessful
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "insertReservation failed", e)
-                false
-            }
-        }  // ✅ close withContext
+            Log.d(TAG, "reserve success eventId=$eventId userId=$userId")
+            true
+        }
     }
 
     /** 🎫 FIXED: Production-ready email sending */
@@ -102,23 +98,172 @@ object SupabaseClient {
 
     suspend fun deleteReservation(eventId: String, userId: String, accessToken: String): Boolean {
         return withContext(Dispatchers.IO) {
+            Log.d(TAG, "cancel start eventId=$eventId userId=$userId")
+
+            val reservationDeleted = deleteReservationRowOnly(eventId, userId, accessToken)
+            if (!reservationDeleted) {
+                Log.e(TAG, "cancel failed: reservation row delete failed eventId=$eventId userId=$userId")
+                return@withContext false
+            }
+            Log.d(TAG, "cancel DB update success: reservation row deleted eventId=$eventId userId=$userId")
+
+            val ticketUpdateSucceeded = updateEventTicketCount(eventId, +1, accessToken)
+            if (!ticketUpdateSucceeded) {
+                Log.e(TAG, "cancel failed: ticket count update failed, rolling back reservation delete eventId=$eventId userId=$userId")
+                val rollbackSuccess = insertReservationRowOnly(eventId, userId, accessToken)
+                Log.d(TAG, "cancel rollback reinsert reservation success=$rollbackSuccess eventId=$eventId userId=$userId")
+                return@withContext false
+            }
+
+            Log.d(TAG, "cancel success eventId=$eventId userId=$userId")
+            true
+        }
+    }
+
+    private suspend fun insertReservationRowOnly(eventId: String, userId: String, accessToken: String): Boolean {
+        val json = JSONObject().apply {
+            put("event_id", eventId)
+            put("user_id", userId)
+        }
+
+        val requestBody = json.toString().toRequestBody("application/json".toMediaType())
+
+        val request = Request.Builder()
+            .url("$BASE_URL/reservations")
+            .addHeader("apikey", BuildConfig.SUPABASE_ANON_KEY)
+            .addHeader("Authorization", "Bearer $accessToken")
+            .addHeader("Prefer", "return=representation")
+            .post(requestBody)
+            .build()
+
+        return try {
+            http.newCall(request).execute().use { response ->
+                val body = response.body?.string().orEmpty()
+                Log.d(TAG, "insertReservationRowOnly code=${response.code} body=$body")
+                if (!response.isSuccessful) return@use false
+                val insertedRows = try {
+                    JSONArray(body).length()
+                } catch (_: Exception) {
+                    0
+                }
+                insertedRows > 0
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "insertReservationRowOnly failed", e)
+            false
+        }
+    }
+
+    private suspend fun deleteReservationRowOnly(eventId: String, userId: String, accessToken: String): Boolean {
+        val request = Request.Builder()
+            .url("$BASE_URL/reservations?event_id=eq.$eventId&user_id=eq.$userId")
+            .addHeader("apikey", BuildConfig.SUPABASE_ANON_KEY)
+            .addHeader("Authorization", "Bearer $accessToken")
+            .addHeader("Prefer", "return=representation")
+            .delete()
+            .build()
+
+        return try {
+            http.newCall(request).execute().use { response ->
+                val body = response.body?.string().orEmpty()
+                Log.d(TAG, "deleteReservationRowOnly code=${response.code} body=$body")
+                if (!response.isSuccessful) return@use false
+                val deletedRows = try {
+                    JSONArray(body).length()
+                } catch (_: Exception) {
+                    0
+                }
+                deletedRows > 0
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "deleteReservationRowOnly failed", e)
+            false
+        }
+    }
+
+    private suspend fun updateEventTicketCount(eventId: String, delta: Int, accessToken: String): Boolean {
+        return withContext(Dispatchers.IO) {
+            Log.d(TAG, "ticket count update start eventId=$eventId delta=$delta")
+
+            val currentCount = fetchCurrentAvailableTickets(eventId, accessToken)
+            if (currentCount == null) {
+                Log.e(TAG, "ticket count update failed: could not fetch current tickets for eventId=$eventId")
+                return@withContext false
+            }
+
+            val newCount = currentCount + delta
+            if (newCount < 0) {
+                Log.e(TAG, "ticket count update failed: negative tickets eventId=$eventId current=$currentCount delta=$delta")
+                return@withContext false
+            }
+
+            val body = JSONObject()
+                .put("available_tickets", newCount)
+                .toString()
+                .toRequestBody("application/json".toMediaType())
+
             val request = Request.Builder()
-                .url("$BASE_URL/reservations?event_id=eq.$eventId&user_id=eq.$userId")
+                .url("$BASE_URL/events?id=eq.$eventId")
+                .patch(body)
                 .addHeader("apikey", BuildConfig.SUPABASE_ANON_KEY)
                 .addHeader("Authorization", "Bearer $accessToken")
-                .delete()
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Prefer", "return=representation")
                 .build()
 
             try {
                 http.newCall(request).execute().use { response ->
-                    val body = response.body?.string().orEmpty()
-                    Log.d(TAG, "deleteReservation code=${response.code} body=$body")
-                    response.isSuccessful
+                    val responseBody = response.body?.string().orEmpty()
+                    Log.d(TAG, "ticket count update response code=${response.code} body=$responseBody")
+                    if (!response.isSuccessful) {
+                        Log.e(TAG, "ticket count update DB failed eventId=$eventId")
+                        return@use false
+                    }
+
+                    val returnedCount = try {
+                        val arr = JSONArray(responseBody)
+                        if (arr.length() > 0) arr.getJSONObject(0).optInt("available_tickets", Int.MIN_VALUE) else Int.MIN_VALUE
+                    } catch (_: Exception) {
+                        Int.MIN_VALUE
+                    }
+
+                    val success = returnedCount == newCount
+                    if (success) {
+                        Log.d(TAG, "ticket count update DB success eventId=$eventId old=$currentCount new=$newCount")
+                    } else {
+                        Log.e(TAG, "ticket count update DB failed verification eventId=$eventId expected=$newCount got=$returnedCount")
+                    }
+                    success
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "deleteReservation failed", e)
+                Log.e(TAG, "ticket count update request failed eventId=$eventId", e)
                 false
             }
+        }
+    }
+
+    private fun fetchCurrentAvailableTickets(eventId: String, accessToken: String): Int? {
+        val request = Request.Builder()
+            .url("$BASE_URL/events?id=eq.$eventId&select=available_tickets")
+            .get()
+            .addHeader("apikey", BuildConfig.SUPABASE_ANON_KEY)
+            .addHeader("Authorization", "Bearer $accessToken")
+            .build()
+
+        return try {
+            http.newCall(request).execute().use { response ->
+                val body = response.body?.string().orEmpty()
+                Log.d(TAG, "fetchCurrentAvailableTickets code=${response.code} body=$body")
+                if (!response.isSuccessful) return@use null
+
+                val arr = JSONArray(body)
+                if (arr.length() == 0) return@use null
+                arr.getJSONObject(0).optInt("available_tickets", Int.MIN_VALUE)
+                    .takeIf { it != Int.MIN_VALUE }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "fetchCurrentAvailableTickets failed eventId=$eventId", e)
+            null
         }
     }
 

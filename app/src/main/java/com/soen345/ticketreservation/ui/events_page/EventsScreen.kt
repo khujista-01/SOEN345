@@ -176,6 +176,7 @@ fun EventCard(
                         if (success) {
                             Log.d("EVENTS", "Ticket $action success for eventId=${event.id}, userId=$userId")
                             isReserved = !isReserved
+                            Log.d("EVENTS", "Triggering events refresh after $action for eventId=${event.id}")
                             onReservationChanged()
 
                             // Send confirmation email only when reserving
@@ -241,11 +242,15 @@ fun EventsLoadingScreen(
     var loading by remember { mutableStateOf(true) }
 
     val refreshEventsFromSupabase: suspend () -> Unit = {
+        Log.d("EVENTS", "Events refresh triggered")
         val result = SupabaseClient.fetchEvents(userAccessToken)
         if (result.errorMessage == null) {
             events = result.events.orEmpty()
             error = null
-            Log.d("EVENTS", "Events refresh success. count=${events?.size ?: 0}")
+            val ticketSnapshot = events
+                ?.joinToString(separator = ", ") { "${it.id}:${it.availableTickets}" }
+                .orEmpty()
+            Log.d("EVENTS", "Events refresh success. count=${events?.size ?: 0} tickets=[$ticketSnapshot]")
         } else {
             error = result.errorMessage
             Log.e("EVENTS", "Events refresh failed: ${result.errorMessage}")
