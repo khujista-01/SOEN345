@@ -12,8 +12,9 @@ serve(async (req) => {
 
   try {
     const { userEmail, userName, eventTitle, eventDate, eventLocation, ticketId, ticketPrice } = await req.json()
+    const recipientEmail = String(userEmail ?? '').trim().toLowerCase()
 
-    if (!userEmail || !eventTitle) {
+    if (!recipientEmail || !eventTitle) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -22,6 +23,11 @@ serve(async (req) => {
 
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
     if (!resendApiKey) throw new Error('RESEND_API_KEY not configured')
+
+    const resendFromEmail = Deno.env.get('RESEND_FROM_EMAIL')?.trim() || 'onboarding@resend.dev'
+    const resendFromName = Deno.env.get('RESEND_FROM_NAME')?.trim() || 'Ticket Reservation'
+    const fromAddress = `${resendFromName} <${resendFromEmail}>`
+    const subject = `Ticket confirmed for ${eventTitle}`
 
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -45,21 +51,29 @@ serve(async (req) => {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: 'Ticket Reservation <onboarding@resend.dev>',
-        to: [userEmail],
-        subject: `🎫 Your ticket for ${eventTitle} is confirmed!`,
+        from: fromAddress,
+        to: [recipientEmail],
+        subject,
         html,
       }),
     })
 
+    const resendBody = await res.text()
+    console.log(
+      `send_ticket_confirmation recipient=${recipientEmail} from=${fromAddress} subject="${subject}" status=${res.status} body=${resendBody}`
+    )
+
     if (!res.ok) {
-      const err = await res.text()
-      return new Response(JSON.stringify({ error: `Email failed: ${err}` }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      return new Response(JSON.stringify({ error: `Email failed: ${resendBody}` }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    return new Response(JSON.stringify({ success: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    return new Response(
+      JSON.stringify({ success: true, recipientEmail, fromAddress, resendResponse: resendBody }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
 
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    const message = error instanceof Error ? error.message : String(error)
+    return new Response(JSON.stringify({ error: message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
 })

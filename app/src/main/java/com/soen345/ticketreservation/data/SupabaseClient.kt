@@ -70,6 +70,10 @@ object SupabaseClient {
                 }
 
                 val body = json.toString().toRequestBody("application/json".toMediaType())
+                Log.d(
+                    "EMAIL",
+                    "sendConfirmationEmail request recipient=$userEmail eventId=${event.id} eventTitle=${event.title}"
+                )
 
                 val request = Request.Builder()
                     .url("${BuildConfig.SUPABASE_URL}/functions/v1/send_ticket_confirmation")
@@ -81,7 +85,7 @@ object SupabaseClient {
 
                 http.newCall(request).execute().use { response ->
                     val bodyStr = response.body?.string().orEmpty()
-                    Log.d("EMAIL", "sendConfirmationEmail code=${response.code} body=$bodyStr")
+                    Log.d("EMAIL", "sendConfirmationEmail response recipient=$userEmail code=${response.code} body=$bodyStr")
 
                     if (response.isSuccessful) {
                         response.code to "✅ Ticket email sent to $userEmail!"
