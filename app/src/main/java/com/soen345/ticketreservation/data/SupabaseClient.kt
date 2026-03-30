@@ -268,7 +268,10 @@ object SupabaseClient {
     }
 
     //added this for browsing events
-    suspend fun fetchEvents(accessToken: String): FetchEventsResult = withContext(Dispatchers.IO) {
+    suspend fun fetchEvents(accessToken: String, userId: String): FetchEventsResult = withContext(Dispatchers.IO) {
+
+        val reservedEventIds = fetchReservedEventIdsForUser(accessToken, userId)
+        Log.d(TAG, "fetchEvents reserved set for userId=$userId => count=${reservedEventIds.size}")
 
         val url =
             //"${BuildConfig.SUPABASE_URL}/rest/v1/events?select=*"
@@ -314,7 +317,8 @@ object SupabaseClient {
                                     location = obj.getString("location"),
                                     date = obj.getString("date"),
                                     availableTickets = obj.getInt("available_tickets"),
-                                    price = obj.getDouble("price")
+                                    price = obj.getDouble("price"),
+                                    isReservedByCurrentUser = reservedEventIds.contains(obj.getString("id"))
                                 )
                             )
                         } catch (e: Exception) {
@@ -332,6 +336,38 @@ object SupabaseClient {
         } catch (e: Exception) {
             Log.e(TAG, "fetchEvents request failure", e)
             FetchEventsResult(null, e.message ?: "Failed to load events due to a network or parsing error.")
+        }
+    }
+
+    private fun fetchReservedEventIdsForUser(accessToken: String, userId: String): Set<String> {
+        val request = Request.Builder()
+            .url("$BASE_URL/reservations?user_id=eq.$userId&select=event_id")
+            .get()
+            .addHeader("apikey", BuildConfig.SUPABASE_ANON_KEY)
+            .addHeader("Authorization", "Bearer $accessToken")
+            .build()
+
+        return try {
+            http.newCall(request).execute().use { response ->
+                val body = response.body?.string().orEmpty()
+                Log.d(TAG, "fetchReservedEventIdsForUser code=${response.code} body=$body")
+                if (!response.isSuccessful) {
+                    Log.e(TAG, "fetchReservedEventIdsForUser failed for userId=$userId")
+                    return@use emptySet()
+                }
+
+                val array = JSONArray(body)
+                buildSet {
+                    for (i in 0 until array.length()) {
+                        val obj = array.getJSONObject(i)
+                        val eventId = obj.optString("event_id")
+                        if (eventId.isNotBlank()) add(eventId)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "fetchReservedEventIdsForUser crashed for userId=$userId", e)
+            emptySet()
         }
     }
 

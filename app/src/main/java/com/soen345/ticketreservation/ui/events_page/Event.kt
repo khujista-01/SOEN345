@@ -8,5 +8,6 @@ data class Event(
     val location: String,
     val date: String,
     val availableTickets: Int,
-    val price: Double
+    val price: Double,
+    val isReservedByCurrentUser: Boolean = false
 )

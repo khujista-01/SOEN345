@@ -131,7 +131,9 @@ fun EventCard(
     userEmail: String,
     onReservationChanged: suspend () -> Unit
 ) {
-    var isReserved by remember { mutableStateOf(false) }
+    var isReserved by remember(event.id, event.isReservedByCurrentUser) {
+        mutableStateOf(event.isReservedByCurrentUser)
+    }
     val scope = rememberCoroutineScope()
     var showDialog by remember { mutableStateOf(false) }
 
@@ -243,12 +245,12 @@ fun EventsLoadingScreen(
 
     val refreshEventsFromSupabase: suspend () -> Unit = {
         Log.d("EVENTS", "Events refresh triggered")
-        val result = SupabaseClient.fetchEvents(userAccessToken)
+        val result = SupabaseClient.fetchEvents(userAccessToken, userId)
         if (result.errorMessage == null) {
             events = result.events.orEmpty()
             error = null
             val ticketSnapshot = events
-                ?.joinToString(separator = ", ") { "${it.id}:${it.availableTickets}" }
+                ?.joinToString(separator = ", ") { "${it.id}:${it.availableTickets}:reserved=${it.isReservedByCurrentUser}" }
                 .orEmpty()
             Log.d("EVENTS", "Events refresh success. count=${events?.size ?: 0} tickets=[$ticketSnapshot]")
         } else {
