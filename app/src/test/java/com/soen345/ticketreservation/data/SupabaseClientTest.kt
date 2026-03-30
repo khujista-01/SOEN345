@@ -60,7 +60,10 @@ class SupabaseClientTest {
                 .setBody(mockJson)
         )
 
-        val result = SupabaseClient.fetchEvents("fake-token")
+        val result = SupabaseClient.fetchEvents(
+            accessToken = "fake-token",
+            userId = "user1"
+        )
 
         Assert.assertNull(result.errorMessage)
         Assert.assertNotNull(result.events)
