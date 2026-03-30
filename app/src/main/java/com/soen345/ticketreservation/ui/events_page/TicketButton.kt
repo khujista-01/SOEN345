@@ -5,7 +5,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxWidth
-import kotlinx.coroutines.launch
 
 @Composable
 fun TicketButton(

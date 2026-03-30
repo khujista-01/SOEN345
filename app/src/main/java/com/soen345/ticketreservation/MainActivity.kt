@@ -139,10 +139,12 @@ private fun AppRoot() {
                     )
                 }
             } else {
+
                 when (appMode) {
                     AppMode.NORMAL -> EventsLoadingScreen(
                         userId = session!!.userId,
-                        userAccessToken = session!!.accessToken
+                        userAccessToken = session!!.accessToken,
+                        userEmail = session!!.email 
                     )
 
                     AppMode.ADMIN_GATE -> AdminGateScreen(

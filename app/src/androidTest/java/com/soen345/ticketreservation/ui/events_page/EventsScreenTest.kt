@@ -29,8 +29,9 @@ class EventsScreenTest {
             EventsScreen(
                 events = events,
                 userId = "user1",
-                userAccessToken = "token"
-            )
+                userAccessToken = "token",
+                userEmail =  "nicoleantounn@hotmail.com",
+                )
         }
 
         composeRule.onNodeWithText("Concert").assertExists()
