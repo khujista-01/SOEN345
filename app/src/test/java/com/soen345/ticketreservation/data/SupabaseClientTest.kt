@@ -86,7 +86,6 @@ class SupabaseClientTest {
         Assert.assertEquals(201, code)
         Assert.assertEquals(mockResponseBody, body)
     }
-
     @Test
     fun `test insertReservation returns true on success`() = runBlocking {
         mockServer.enqueue(MockResponse().setResponseCode(201))

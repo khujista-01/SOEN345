@@ -8,12 +8,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-
+import com.soen345.ticketreservation.data.SupabaseClient
+import android.util.Log
 @Composable
 fun EventsScreen(
     events: List<Event>,
     userId: String,
-    userAccessToken: String
+    userAccessToken: String,
+    userEmail: String
 ) {
     var searchText by remember { mutableStateOf("") }
     var selectedDate by remember { mutableStateOf("") }
@@ -51,7 +53,7 @@ fun EventsScreen(
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             items(filteredEvents) { event ->
-                EventCard(event, userId, userAccessToken)
+                EventCard(event, userId, userAccessToken, userEmail)
             }
         }
     }
@@ -112,9 +114,10 @@ fun EventFiltersCompact(
     }
 }
 @Composable
-fun EventCard(event: Event, userId: String, userAccessToken: String) {
+fun EventCard(event: Event, userId: String, userAccessToken: String,userEmail: String ) {
     var isReserved by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    var showDialog by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -138,20 +141,67 @@ fun EventCard(event: Event, userId: String, userAccessToken: String) {
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            TicketButton(
-                isReserved = isReserved,
-                onReservedChange = { newState ->
+            var isProcessing by remember { mutableStateOf(false) }
+
+            Button(
+                onClick = {
+                    if (isProcessing) return@Button
+
                     scope.launch {
-                        val success =
-                            if (newState)
-                                TicketActions.reserveTicket(event.id, userId, userAccessToken)
-                            else
-                                TicketActions.cancelReservation(event.id, userId, userAccessToken)
+                        isProcessing = true
+
+                        val success = if (!isReserved) {
+                            SupabaseClient.insertReservation(event.id, userId, userAccessToken)
+                        } else {
+                            SupabaseClient.deleteReservation(event.id, userId, userAccessToken)
+                        }
 
                         if (success) {
-                            isReserved = newState
+                            isReserved = !isReserved
+
+                            // Send confirmation email only when reserving
+                            if (isReserved) {
+                                try {
+                                    val (code, msg) = SupabaseClient.sendConfirmationEmail(
+                                        userEmail = userEmail,
+                                        userName = "User",
+                                        event = event,
+                                        accessToken = userAccessToken
+                                    )
+                                    Log.d("EMAIL", msg)
+                                } catch (e: Exception) {
+                                    Log.e("EMAIL", "Failed to send email", e)
+                                }
+                                showDialog = true
+                            }
                         }
+
+                        isProcessing = false
                     }
+                },
+                enabled = !isProcessing,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    when {
+                        isProcessing -> "Processing…"
+                        isReserved -> "Cancel Reservation"
+                        else -> "Reserve Ticket"
+                    }
+                )
+            }
+        }
+        if (showDialog) {
+            AlertDialog(
+                onDismissRequest = { showDialog = false },
+                confirmButton = {
+                    Button(onClick = { showDialog = false }) {
+                        Text("OK")
+                    }
+                },
+                title = { Text("Confirmation") },
+                text = {
+                    Text("Your ticket has been reserved and a confirmation email has been sent!")
                 }
             )
         }
@@ -160,8 +210,9 @@ fun EventCard(event: Event, userId: String, userAccessToken: String) {
 @Composable
 fun EventsDummyScreen(
     userId: String,
-    userAccessToken: String
-) {
+    userAccessToken: String,
+    userEmail: String
+    ) {
     val dummyEvents = listOf(
         Event("67ffa809-e247-434d-b5bd-2f01d4f4400c", "Rock Concert", "Join the biggest rock concert of the year!", "Music", "Montreal Arena", "2026-03-10", 120, 49.99),
         Event("86590715-2712-4564-a91a-04bb25fceda9", "Tech Conference", "Explore AI and Robotics innovations.", "Conference", "Concordia University", "2026-04-05", 50, 99.0),
@@ -171,6 +222,7 @@ fun EventsDummyScreen(
     EventsScreen(
         events = dummyEvents,
         userId = userId,
-        userAccessToken = userAccessToken
+        userAccessToken = userAccessToken,
+        userEmail =  userEmail,
     )
 }

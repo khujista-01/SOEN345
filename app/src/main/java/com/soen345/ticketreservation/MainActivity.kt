@@ -122,7 +122,8 @@ private fun AppRoot() {
             } else {
                 EventsDummyScreen(
                     userId = session!!.userId,
-                    userAccessToken = session!!.accessToken
+                    userAccessToken = session!!.accessToken,
+                    userEmail = session!!.email
                 )
             }
         }
