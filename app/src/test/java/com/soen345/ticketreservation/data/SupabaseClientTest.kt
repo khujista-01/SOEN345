@@ -37,7 +37,7 @@ class SupabaseClientTest {
     }
 
     @Test
-    fun `test fetchEvents returns a list`() {
+    fun `test fetchEvents returns a list`() = runBlocking {
         // Mock JSON response for events
         val mockJson = """
             [
@@ -60,10 +60,12 @@ class SupabaseClientTest {
                 .setBody(mockJson)
         )
 
-        val events = SupabaseClient.fetchEvents("fake-token")
-        Assert.assertNotNull(events)
-        Assert.assertEquals(1, events!!.size)
-        Assert.assertEquals("Concert", events[0].title)
+        val result = SupabaseClient.fetchEvents("fake-token")
+
+        Assert.assertNull(result.errorMessage)
+        Assert.assertNotNull(result.events)
+        Assert.assertEquals(1, result.events!!.size)
+        Assert.assertEquals("Concert", result.events!![0].title)
     }
 
     @Test

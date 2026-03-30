@@ -40,7 +40,7 @@ class AuthClientTest {
     }
 
     @Test
-    fun `signUp returns mocked code and body`() {
+    fun `signUp returns mocked code and body`() = runBlocking {
         val mockJson = """{"id":"1"}"""
 
         mockServer.enqueue(
@@ -56,7 +56,7 @@ class AuthClientTest {
     }
 
     @Test
-    fun `signIn returns AuthSession when successful`() {
+    fun `signIn returns AuthSession when successful`() = runBlocking {
         val mockJson = """
             {
                 "access_token":"token",
@@ -79,7 +79,7 @@ class AuthClientTest {
     }
 
     @Test
-    fun `signOut returns mocked code and body`() {
+    fun `signOut returns mocked code and body`() = runBlocking {
         val mockJson = "{}"
 
         mockServer.enqueue(
