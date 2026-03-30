@@ -14,6 +14,11 @@ import org.json.JSONObject
 
 object SupabaseClient {
 
+    data class FetchEventsResult(
+        val events: List<Event>?,
+        val errorMessage: String?
+    )
+
     private const val TAG = "SUPABASE_TEST"
     private val http = OkHttpClient()
     //private const val BASE_URL = "${BuildConfig.SUPABASE_URL}/rest/v1"
@@ -61,7 +66,7 @@ object SupabaseClient {
     }
 
     //added this for browsing events
-    fun fetchEvents(accessToken: String): List<Event>? {
+    suspend fun fetchEvents(accessToken: String): FetchEventsResult = withContext(Dispatchers.IO) {
 
         val url =
             //"${BuildConfig.SUPABASE_URL}/rest/v1/events?select=*"
@@ -73,36 +78,58 @@ object SupabaseClient {
             .addHeader("Authorization", "Bearer $accessToken")
             .build()
 
-        Log.d(TAG, "REQUEST fetch events")
+        Log.d(TAG, "REQUEST fetch events: url=$url")
 
-        http.newCall(req).execute().use { resp ->
-            val body = resp.body?.string().orEmpty()
-            Log.d(TAG, "CODE=${resp.code}")
-            Log.d(TAG, "BODY=$body")
+        return@withContext try {
+            http.newCall(req).execute().use { resp ->
+                val body = resp.body?.string().orEmpty()
+                Log.d(TAG, "fetchEvents CODE=${resp.code}")
+                Log.d(TAG, "fetchEvents BODY=$body")
 
-            if (!resp.isSuccessful) return null
+                if (!resp.isSuccessful) {
+                    FetchEventsResult(null, "Failed to load events (${resp.code}).")
+                } else {
+                    val jsonArray = org.json.JSONArray(body)
+                    val events = mutableListOf<Event>()
 
-            val jsonArray = org.json.JSONArray(body)
-            val events = mutableListOf<Event>()
+                    for (i in 0 until jsonArray.length()) {
+                        val obj = jsonArray.getJSONObject(i)
+                        try {
+                            val requiredFields = listOf(
+                                "id", "title", "description", "category", "location", "date", "available_tickets", "price"
+                            )
+                            val missingFields = requiredFields.filter { field -> !obj.has(field) || obj.isNull(field) }
+                            if (missingFields.isNotEmpty()) {
+                                throw IllegalStateException("Missing fields: ${missingFields.joinToString(", ")}")
+                            }
 
-            for (i in 0 until jsonArray.length()) {
-                val obj = jsonArray.getJSONObject(i)
+                            events.add(
+                                Event(
+                                    id = obj.getString("id"),
+                                    title = obj.getString("title"),
+                                    description = obj.getString("description"),
+                                    category = obj.getString("category"),
+                                    location = obj.getString("location"),
+                                    date = obj.getString("date"),
+                                    availableTickets = obj.getInt("available_tickets"),
+                                    price = obj.getDouble("price")
+                                )
+                            )
+                        } catch (e: Exception) {
+                            Log.e(TAG, "fetchEvents parse failure at index=$i row=$obj", e)
+                            return@use FetchEventsResult(
+                                null,
+                                "Failed to parse event data at row ${i + 1}."
+                            )
+                        }
+                    }
 
-                events.add(
-                    Event(
-                        id = obj.getString("id"),
-                        title = obj.getString("title"),
-                        description = obj.getString("description"),
-                        category = obj.getString("category"),
-                        location = obj.getString("location"),
-                        date = obj.getString("date"),
-                        availableTickets = obj.getInt("available_tickets"),
-                        price = obj.getDouble("price")
-                    )
-                )
+                    FetchEventsResult(events, null)
+                }
             }
-
-            return events
+        } catch (e: Exception) {
+            Log.e(TAG, "fetchEvents request failure", e)
+            FetchEventsResult(null, e.message ?: "Failed to load events due to a network or parsing error.")
         }
     }
 

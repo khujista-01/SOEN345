@@ -79,31 +79,19 @@ fun EventsLoadingScreen(
     userId: String,
     userAccessToken: String
 ) {
-    val scope = rememberCoroutineScope()
     var events by remember { mutableStateOf<List<Event>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
 
     LaunchedEffect(userAccessToken) {
-        scope.launch {
-            loading = true
-            error = null
-            try {
-                val fetchedEvents = SupabaseClient.fetchEvents(userAccessToken)
-                if (fetchedEvents != null) {
-                    events = fetchedEvents
-                    error = null
-                } else {
-                    error = "Failed to load events from server."
-                    events = emptyList()
-                }
-            } catch (e: Exception) {
-                error = "Error loading events: ${e.message}"
-                events = emptyList()
-            } finally {
-                loading = false
-            }
-        }
+        loading = true
+        error = null
+
+        val result = SupabaseClient.fetchEvents(userAccessToken)
+        events = result.events.orEmpty()
+        error = result.errorMessage
+
+        loading = false
     }
 
     when {
@@ -124,7 +112,10 @@ fun EventsLoadingScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Text(error!!, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    text = error ?: "Failed to load events.",
+                    style = MaterialTheme.typography.bodyLarge
+                )
             }
         }
         else -> {
