@@ -14,19 +14,107 @@ import com.soen345.ticketreservation.data.SupabaseClient
 import kotlinx.coroutines.launch
 
 @Composable
-fun EventsScreen(events: List<Event>, userId: String, userAccessToken: String) {
-    LazyColumn(
+fun EventsScreen(
+    events: List<Event>,
+    userId: String,
+    userAccessToken: String
+) {
+    var searchText by remember { mutableStateOf("") }
+    var selectedDate by remember { mutableStateOf("") }
+    var selectedLocation by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf("") }
+
+    // Filtering logic
+    val filteredEvents = events.filter { event ->
+        (searchText.isEmpty() ||
+                event.title.contains(searchText, ignoreCase = true) ||
+                event.description.contains(searchText, ignoreCase = true)) &&
+                (selectedDate.isEmpty() || event.date.contains(selectedDate)) &&
+                (selectedLocation.isEmpty() || event.location.contains(selectedLocation, ignoreCase = true)) &&
+                (selectedCategory.isEmpty() || event.category.contains(selectedCategory, ignoreCase = true))
+    }
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(16.dp)
     ) {
-        items(events) { event ->
-            EventCard(event = event, userId = userId, userAccessToken = userAccessToken)
+
+        EventFiltersCompact(
+            searchText = searchText,
+            onSearchChange = { searchText = it },
+            selectedDate = selectedDate,
+            onDateChange = { selectedDate = it },
+            selectedLocation = selectedLocation,
+            onLocationChange = { selectedLocation = it },
+            selectedCategory = selectedCategory,
+            onCategoryChange = { selectedCategory = it }
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            items(filteredEvents) { event ->
+                EventCard(event, userId, userAccessToken)
+            }
         }
     }
 }
+@Composable
+fun EventFiltersCompact(
+    searchText: String,
+    onSearchChange: (String) -> Unit,
+    selectedDate: String,
+    onDateChange: (String) -> Unit,
+    selectedLocation: String,
+    onLocationChange: (String) -> Unit,
+    selectedCategory: String,
+    onCategoryChange: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
 
+        // Search field on its own row
+        OutlinedTextField(
+            value = searchText,
+            onValueChange = onSearchChange,
+            label = { Text("Search") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodySmall
+        )
+
+        // Filters in a row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedTextField(
+                value = selectedDate,
+                onValueChange = onDateChange,
+                label = { Text("Date") },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodySmall
+            )
+            OutlinedTextField(
+                value = selectedLocation,
+                onValueChange = onLocationChange,
+                label = { Text("Location") },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodySmall
+            )
+            OutlinedTextField(
+                value = selectedCategory,
+                onValueChange = onCategoryChange,
+                label = { Text("Category") },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodySmall
+            )
+        }
+    }
+}
 @Composable
 fun EventCard(event: Event, userId: String, userAccessToken: String) {
     var isReserved by remember { mutableStateOf(false) }
