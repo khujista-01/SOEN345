@@ -10,7 +10,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
-import com.soen345.ticketreservation.data.SupabaseClient
 import kotlinx.coroutines.launch
 import com.soen345.ticketreservation.data.SupabaseClient
 import android.util.Log
@@ -19,7 +18,8 @@ fun EventsScreen(
     events: List<Event>,
     userId: String,
     userAccessToken: String,
-    userEmail: String
+    userEmail: String,
+    onReservationChanged: suspend () -> Unit
 ) {
     var searchText by remember { mutableStateOf("") }
     var selectedDate by remember { mutableStateOf("") }
@@ -57,7 +57,13 @@ fun EventsScreen(
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             items(filteredEvents) { event ->
-                EventCard(event, userId, userAccessToken, userEmail)
+                EventCard(
+                    event = event,
+                    userId = userId,
+                    userAccessToken = userAccessToken,
+                    userEmail = userEmail,
+                    onReservationChanged = onReservationChanged
+                )
             }
         }
     }
@@ -118,7 +124,13 @@ fun EventFiltersCompact(
     }
 }
 @Composable
-fun EventCard(event: Event, userId: String, userAccessToken: String,userEmail: String ) {
+fun EventCard(
+    event: Event,
+    userId: String,
+    userAccessToken: String,
+    userEmail: String,
+    onReservationChanged: suspend () -> Unit
+) {
     var isReserved by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     var showDialog by remember { mutableStateOf(false) }
@@ -154,6 +166,7 @@ fun EventCard(event: Event, userId: String, userAccessToken: String,userEmail: S
                     scope.launch {
                         isProcessing = true
 
+                        val action = if (!isReserved) "reserve" else "cancel"
                         val success = if (!isReserved) {
                             SupabaseClient.insertReservation(event.id, userId, userAccessToken)
                         } else {
@@ -161,7 +174,9 @@ fun EventCard(event: Event, userId: String, userAccessToken: String,userEmail: S
                         }
 
                         if (success) {
+                            Log.d("EVENTS", "Ticket $action success for eventId=${event.id}, userId=$userId")
                             isReserved = !isReserved
+                            onReservationChanged()
 
                             // Send confirmation email only when reserving
                             if (isReserved) {
@@ -178,6 +193,8 @@ fun EventCard(event: Event, userId: String, userAccessToken: String,userEmail: S
                                 }
                                 showDialog = true
                             }
+                        } else {
+                            Log.e("EVENTS", "Ticket $action failed for eventId=${event.id}, userId=$userId")
                         }
 
                         isProcessing = false
@@ -223,14 +240,23 @@ fun EventsLoadingScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
 
+    val refreshEventsFromSupabase: suspend () -> Unit = {
+        val result = SupabaseClient.fetchEvents(userAccessToken)
+        if (result.errorMessage == null) {
+            events = result.events.orEmpty()
+            error = null
+            Log.d("EVENTS", "Events refresh success. count=${events?.size ?: 0}")
+        } else {
+            error = result.errorMessage
+            Log.e("EVENTS", "Events refresh failed: ${result.errorMessage}")
+        }
+    }
+
     LaunchedEffect(userAccessToken) {
         loading = true
         error = null
 
-        val result = SupabaseClient.fetchEvents(userAccessToken)
-        events = result.events.orEmpty()
-        error = result.errorMessage
-
+        refreshEventsFromSupabase()
         loading = false
     }
 
@@ -263,7 +289,8 @@ fun EventsLoadingScreen(
                 events = events.orEmpty(),
                 userId = userId,
                 userAccessToken = userAccessToken,
-                userEmail = userEmail
+                userEmail = userEmail,
+                onReservationChanged = refreshEventsFromSupabase
             )
         }
     }
