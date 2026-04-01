@@ -24,6 +24,7 @@ object SupabaseClient {
     private const val TAG = "SUPABASE"
     private val http = OkHttpClient()
     var BASE_URL = "${BuildConfig.SUPABASE_URL}/rest/v1"
+    var FUNCTIONS_URL = "${BuildConfig.SUPABASE_URL}/functions/v1"
 
 
     suspend fun insertReservation(eventId: String, userId: String, accessToken: String): Boolean {
@@ -72,7 +73,7 @@ object SupabaseClient {
                 val body = json.toString().toRequestBody("application/json".toMediaType())
 
                 val request = Request.Builder()
-                    .url("${BuildConfig.SUPABASE_URL}/functions/v1/send_ticket_confirmation")
+                    .url("$FUNCTIONS_URL/send_ticket_confirmation")
                     .post(body)
                     .addHeader("Authorization", "Bearer $accessToken")
                     .addHeader("apikey", BuildConfig.SUPABASE_ANON_KEY)
