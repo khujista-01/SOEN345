@@ -17,7 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -199,7 +199,7 @@ private fun LoginCard(onLoginSuccess: (AuthClient.AuthSession) -> Unit) {
             Text("Welcome back", style = MaterialTheme.typography.titleLarge)
             Text("Login with your email and password.", style = MaterialTheme.typography.bodyMedium)
 
-            Divider()
+            HorizontalDivider()
 
             OutlinedTextField(
                 value = email,
@@ -297,7 +297,7 @@ private fun RegisterCard(onRegisterSuccess: (AuthClient.AuthSession) -> Unit) {
             Text("Create an account", style = MaterialTheme.typography.titleLarge)
             Text("Register with Supabase Auth, then store your profile in the database.", style = MaterialTheme.typography.bodyMedium)
 
-            Divider()
+            HorizontalDivider()
 
             OutlinedTextField(
                 value = fullName,
