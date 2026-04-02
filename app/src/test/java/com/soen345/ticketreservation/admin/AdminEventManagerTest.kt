@@ -3,8 +3,8 @@ package com.soen345.ticketreservation.admin
 import org.junit.Before
 import org.junit.Test
 import org.junit.Assert.assertThrows
-import kotlin.test.assertEquals
-import kotlin.test.assertNull
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 
 class AdminEventManagerTest {
     private lateinit var manager: AdminEventManager
@@ -134,7 +134,7 @@ class AdminEventManagerTest {
         val retrieved = manager.getEventById("event1")
         assertEquals(updatedEvent, retrieved)
         assertEquals("Updated Event", retrieved?.title)
-        assertEquals(75.0, retrieved?.price)
+        assertEquals(75.0, retrieved?.price ?: -1.0, 0.0)
     }
 
     @Test
@@ -232,7 +232,7 @@ class AdminEventManagerTest {
         manager.cancelEvent("event1")
         val retrieved = manager.getEventById("event1")
         assertEquals("Test Event", retrieved?.title)
-        assertEquals(50.0, retrieved?.price)
+        assertEquals(50.0, retrieved?.price ?: -1.0, 0.0)
         assertEquals(100, retrieved?.availableTickets)
     }
 
@@ -302,7 +302,7 @@ class AdminEventManagerTest {
         val freeEvent = validEvent.copy(price = 0.0)
         manager.addEvent(freeEvent)
         val retrieved = manager.getEventById("event1")
-        assertEquals(0.0, retrieved?.price)
+        assertEquals(0.0, retrieved?.price ?: -1.0, 0.0)
     }
 
     @Test

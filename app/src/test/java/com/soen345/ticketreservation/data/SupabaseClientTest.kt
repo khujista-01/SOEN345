@@ -1,6 +1,7 @@
 package com.soen345.ticketreservation.data
 
 import android.util.Log
+import com.soen345.ticketreservation.ui.events_page.Event
 import io.mockk.every
 import io.mockk.mockkStatic
 import kotlinx.coroutines.runBlocking
@@ -24,7 +25,10 @@ class SupabaseClientTest {
     fun setUp() {
         mockServer = MockWebServer()
         mockServer.start()
-        SupabaseClient.BASE_URL = mockServer.url("/rest/v1").toString().removeSuffix("/")
+        val mockUrl = mockServer.url("/").toString().removeSuffix("/")
+        SupabaseClient.BASE_URL = "$mockUrl/rest/v1"
+        SupabaseClient.FUNCTIONS_URL = "$mockUrl/functions/v1"
+        
         // Mock Android Log to avoid RuntimeException
         mockkStatic(Log::class)
         every { Log.d(any(), any()) } returns 0
@@ -98,6 +102,7 @@ class SupabaseClientTest {
         Assert.assertEquals(201, code)
         Assert.assertEquals(mockResponseBody, body)
     }
+
     @Test
     fun `test insertReservation returns true on success`() = runBlocking {
         mockServer.enqueue(
@@ -148,4 +153,26 @@ class SupabaseClientTest {
         val result = SupabaseClient.deleteReservation("event1", "user1", "fake-token")
         Assert.assertTrue(result)
     }
+
+    @Test
+    fun `test sendConfirmationEmail success`() = runBlocking {
+        val event = Event("1", "Concert", "Fun", "Music", "Hall A", "2026-03-10", 50, 30.0)
+        
+        mockServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"message":"Email sent"}""")
+        )
+
+        val (code, msg) = SupabaseClient.sendConfirmationEmail(
+            userEmail = "test@test.com",
+            userName = "Test User",
+            event = event,
+            accessToken = "fake-token"
+        )
+
+        Assert.assertEquals(200, code)
+        Assert.assertTrue("Expected success message but got: ${msg}", msg.contains("Ticket email sent", ignoreCase = true))
+    }
+
 }

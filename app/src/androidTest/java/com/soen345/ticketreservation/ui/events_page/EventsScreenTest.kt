@@ -31,6 +31,7 @@ class EventsScreenTest {
                 userId = "user1",
                 userAccessToken = "token",
                 userEmail =  "nicoleantounn@hotmail.com",
+                onReservationChanged = {}
                 )
         }
 
