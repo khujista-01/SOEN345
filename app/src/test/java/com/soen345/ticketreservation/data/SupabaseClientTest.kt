@@ -175,4 +175,35 @@ class SupabaseClientTest {
         Assert.assertTrue("Expected success message but got: ${msg}", msg.contains("Ticket email sent", ignoreCase = true))
     }
 
+    @Test
+    fun `fetchEvents returns error on failure`() = runBlocking {
+        mockServer.enqueue(
+            MockResponse().setResponseCode(500)
+        )
+
+        val result = SupabaseClient.fetchEvents("fake-token", "user1")
+
+        Assert.assertNotNull(result.errorMessage)
+        Assert.assertNull(result.events)
+    }
+
+    @Test
+    fun `upsertUserProfile returns error code`() {
+        mockServer.enqueue(
+            MockResponse()
+                .setResponseCode(400)
+                .setBody("""{"error":"bad request"}""")
+        )
+
+        val (code, _) = SupabaseClient.upsertUserProfile(
+            "fake-token", "123", "test@test.com", null, null
+        )
+
+        Assert.assertEquals(400, code)
+    }
 }
+
+
+
+
+
