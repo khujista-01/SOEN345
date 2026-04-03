@@ -1,7 +1,12 @@
+import org.gradle.testing.jacoco.tasks.JacocoReport
 import java.util.Properties
+jacoco {
+    toolVersion = "0.8.10"
+}
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    id("jacoco")
 }
 
 
@@ -41,6 +46,9 @@ android {
                 "proguard-rules.pro"
             )
         }
+        debug {
+            enableUnitTestCoverage = true
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -51,8 +59,15 @@ android {
         buildConfig = true
     }
     testOptions {
+        unitTests.all {
+            it.extensions.configure<JacocoTaskExtension> {
+                isIncludeNoLocationClasses = true
+                excludes = listOf("jdk.internal.*")
+            }
+        }
         unitTests {
             isIncludeAndroidResources = true
+            isReturnDefaultValues = true
         }
     }
 }
@@ -78,4 +93,42 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    testImplementation(kotlin("test"))
+    testImplementation("org.json:json:20240303")
+}
+
+tasks.register<JacocoReport>("jacocoTestReport") {
+    dependsOn("testDebugUnitTest")
+
+    reports {
+        html.required.set(true)
+        xml.required.set(true)
+    }
+
+    val fileFilter = listOf(
+        "**/*Activity*.*",
+        "**/*Composable*.*",
+        "**/R.class", "**/R$*.class",
+        "**/BuildConfig.*", "**/Manifest*.*",
+        "**/*Test*.*"
+    )
+
+     val mainClasses = fileTree(
+        "$buildDir/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes"
+    ) {
+        exclude(fileFilter)
+    }
+
+    classDirectories.setFrom(files(mainClasses))
+    sourceDirectories.setFrom(files(
+        "src/main/java",
+        "src/main/kotlin"
+    ))
+
+    executionData.setFrom(fileTree(buildDir) {
+        include(
+            "jacoco/testDebugUnitTest.exec",
+            "outputs/unit_test_code_coverage/debugUnitTest/*.exec"
+        )
+    })
 }
