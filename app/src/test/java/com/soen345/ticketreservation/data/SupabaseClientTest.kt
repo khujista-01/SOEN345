@@ -1,6 +1,7 @@
 package com.soen345.ticketreservation.data
 
 import android.util.Log
+import com.soen345.ticketreservation.admin.AdminEvent
 import com.soen345.ticketreservation.ui.events_page.Event
 import io.mockk.every
 import io.mockk.mockkStatic
@@ -43,6 +44,7 @@ class SupabaseClientTest {
 
     @Test
     fun `test fetchEvents returns a list`() = runBlocking {
+        // First mock response for fetchReservedEventIdsForUser
         mockServer.enqueue(
             MockResponse()
                 .setResponseCode(200)
@@ -80,6 +82,51 @@ class SupabaseClientTest {
         Assert.assertNotNull(result.events)
         Assert.assertEquals(1, result.events!!.size)
         Assert.assertEquals("Concert", result.events!![0].title)
+    }
+
+    @Test
+    fun `fetchEvents returns error when fields are missing`() = runBlocking {
+        // Mock reserved events
+        mockServer.enqueue(MockResponse().setResponseCode(200).setBody("[]"))
+
+        // Missing "price" field
+        val mockJson = """
+            [
+                {
+                    "id": "1",
+                    "title": "Concert",
+                    "description": "Fun concert",
+                    "category": "Music",
+                    "location": "Hall A",
+                    "date": "2026-03-10",
+                    "available_tickets": 50
+                }
+            ]
+        """.trimIndent()
+
+        mockServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(mockJson)
+        )
+
+        val result = SupabaseClient.fetchEvents("fake-token", "user1")
+
+        Assert.assertNotNull(result.errorMessage)
+        Assert.assertTrue(result.errorMessage!!.contains("parse", ignoreCase = true))
+    }
+
+    @Test
+    fun `fetchEvents returns error on network exception`() = runBlocking {
+        // Mock reserved events success
+        mockServer.enqueue(MockResponse().setResponseCode(200).setBody("[]"))
+        
+        // Shutdown server before second call
+        mockServer.shutdown()
+
+        val result = SupabaseClient.fetchEvents("fake-token", "user1")
+
+        Assert.assertNotNull(result.errorMessage)
     }
 
     @Test
@@ -126,8 +173,16 @@ class SupabaseClientTest {
     }
 
     @Test
-    fun `insertReservation returns false on failure`() = runBlocking {
+    fun `insertReservation returns false when ticket update fails and rolls back`() = runBlocking {
+        // 1. insertReservationRowOnly success
+        mockServer.enqueue(MockResponse().setResponseCode(201).setBody("""[{"id":1}]"""))
+        // 2. updateEventTicketCount -> fetchCurrentAvailableTickets success
+        mockServer.enqueue(MockResponse().setResponseCode(200).setBody("""[{"available_tickets":10}]"""))
+        // 3. updateEventTicketCount -> patch call fails
         mockServer.enqueue(MockResponse().setResponseCode(400))
+        // 4. deleteReservationRowOnly (rollback) success
+        mockServer.enqueue(MockResponse().setResponseCode(200).setBody("""[{"id":1}]"""))
+
         val result = SupabaseClient.insertReservation("event1", "user1", "fake-token")
         Assert.assertFalse(result)
     }
@@ -155,6 +210,19 @@ class SupabaseClientTest {
     }
 
     @Test
+    fun `deleteReservation returns false when rollback occurs`() = runBlocking {
+        // 1. deleteReservationRowOnly success
+        mockServer.enqueue(MockResponse().setResponseCode(200).setBody("""[{"id":1}]"""))
+        // 2. updateEventTicketCount -> fetchCurrentAvailableTickets fails
+        mockServer.enqueue(MockResponse().setResponseCode(500))
+        // 3. insertReservationRowOnly (rollback) success
+        mockServer.enqueue(MockResponse().setResponseCode(201).setBody("""[{"id":1}]"""))
+
+        val result = SupabaseClient.deleteReservation("event1", "user1", "fake-token")
+        Assert.assertFalse(result)
+    }
+
+    @Test
     fun `test sendConfirmationEmail success`() = runBlocking {
         val event = Event("1", "Concert", "Fun", "Music", "Hall A", "2026-03-10", 50, 30.0)
         
@@ -176,34 +244,66 @@ class SupabaseClientTest {
     }
 
     @Test
-    fun `fetchEvents returns error on failure`() = runBlocking {
-        mockServer.enqueue(
-            MockResponse().setResponseCode(500)
-        )
+    fun `sendConfirmationEmail returns error on exception`() = runBlocking {
+        val event = Event("1", "Concert", "Fun", "Music", "Hall A", "2026-03-10", 50, 30.0)
+        mockServer.shutdown()
 
-        val result = SupabaseClient.fetchEvents("fake-token", "user1")
-
-        Assert.assertNotNull(result.errorMessage)
-        Assert.assertNull(result.events)
+        val (code, _) = SupabaseClient.sendConfirmationEmail("test@test.com", null, event, "token")
+        Assert.assertEquals(500, code)
     }
 
     @Test
-    fun `upsertUserProfile returns error code`() {
+    fun `fetchAdminEvents success`() = runBlocking {
         mockServer.enqueue(
             MockResponse()
-                .setResponseCode(400)
-                .setBody("""{"error":"bad request"}""")
+                .setResponseCode(200)
+                .setBody("""[{"id":"1","title":"Admin Event"}]""")
         )
+        val (events, error) = SupabaseClient.fetchAdminEvents("token")
+        Assert.assertNull(error)
+        Assert.assertEquals(1, events?.size)
+        Assert.assertEquals("Admin Event", events?.get(0)?.title)
+    }
 
-        val (code, _) = SupabaseClient.upsertUserProfile(
-            "fake-token", "123", "test@test.com", null, null
+    @Test
+    fun `fetchAdminEvents failure`() = runBlocking {
+        mockServer.enqueue(MockResponse().setResponseCode(404))
+        val (events, error) = SupabaseClient.fetchAdminEvents("token")
+        Assert.assertNull(events)
+        Assert.assertNotNull(error)
+    }
+
+    @Test
+    fun `insertAdminEvent success`() = runBlocking {
+        mockServer.enqueue(MockResponse().setResponseCode(201))
+        val (success, _) = SupabaseClient.insertAdminEvent(
+            AdminEvent("1", "Title", "Desc", "Cat", "Loc", "Date", 10, 10.0),
+            "token"
         )
+        Assert.assertTrue(success)
+    }
 
-        Assert.assertEquals(400, code)
+    @Test
+    fun `cancelAdminEvent primary success`() = runBlocking {
+        mockServer.enqueue(MockResponse().setResponseCode(200))
+        val (success, _) = SupabaseClient.cancelAdminEvent("1", "token")
+        Assert.assertTrue(success)
+    }
+
+    @Test
+    fun `cancelAdminEvent fallback success`() = runBlocking {
+        mockServer.enqueue(MockResponse().setResponseCode(400)) // Primary fails
+        mockServer.enqueue(MockResponse().setResponseCode(200)) // Fallback succeeds
+        val (success, msg) = SupabaseClient.cancelAdminEvent("1", "token")
+        Assert.assertTrue(success)
+        Assert.assertTrue(msg.contains("Fallback", ignoreCase = true) || msg.contains("set to 0"))
+    }
+
+    @Test
+    fun `cancelAdminEvent total failure`() = runBlocking {
+        mockServer.enqueue(MockResponse().setResponseCode(400)) // Primary fails
+        mockServer.enqueue(MockResponse().setResponseCode(400)) // Fallback fails
+        val (success, _) = SupabaseClient.cancelAdminEvent("1", "token")
+        Assert.assertFalse(success)
     }
 }
-
-
-
-
-

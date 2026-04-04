@@ -56,6 +56,17 @@ class AuthClientTest {
     }
 
     @Test
+    fun `signUp returns error on exception`() = runBlocking {
+        // Shutting down the server to trigger an IOException
+        mockServer.shutdown()
+
+        val (code, body) = AuthClient.signUp("test@test.com", "password")
+
+        assertEquals(0, code)
+        assertNotEquals("error", body) // Should contain exception message
+    }
+
+    @Test
     fun `signIn returns AuthSession when successful`() = runBlocking {
         val mockJson = """
             {
@@ -79,6 +90,52 @@ class AuthClientTest {
     }
 
     @Test
+    fun `signIn returns null when response not successful`() = runBlocking {
+        mockServer.enqueue(
+            MockResponse()
+                .setResponseCode(401)
+                .setBody("""{"error":"unauthorized"}""")
+        )
+
+        val session = AuthClient.signIn("test@test.com", "wrong")
+
+        assertNull(session)
+    }
+
+    @Test
+    fun `signIn returns null when json is invalid`() = runBlocking {
+        mockServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("invalid json")
+        )
+
+        val session = AuthClient.signIn("test@test.com", "password")
+
+        assertNull(session)
+    }
+
+    @Test
+    fun `signIn returns null when essential fields are missing`() = runBlocking {
+        val mockJson = """
+            {
+                "access_token":"",
+                "user":{"id":""}
+            }
+        """.trimIndent()
+
+        mockServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(mockJson)
+        )
+
+        val session = AuthClient.signIn("test@test.com", "password")
+
+        assertNull(session)
+    }
+
+    @Test
     fun `signOut returns mocked code and body`() = runBlocking {
         val mockJson = "{}"
 
@@ -92,5 +149,14 @@ class AuthClientTest {
 
         assertEquals(200, code)
         assertEquals(mockJson, body)
+    }
+
+    @Test
+    fun `signOut returns error on exception`() = runBlocking {
+        mockServer.shutdown()
+
+        val (code, body) = AuthClient.signOut("token")
+
+        assertEquals(0, code)
     }
 }
