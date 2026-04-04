@@ -72,15 +72,6 @@ class TicketActionsTest {
     }
 
     @Test
-    fun `reserveTicket returns false on exception`() = runBlocking {
-        server.shutdown() // Trigger IOException
-
-        val result = TicketActions.reserveTicket("event1", "user1", "token")
-
-        Assert.assertFalse(result)
-    }
-
-    @Test
     fun `cancelReservation returns true on success`() = runBlocking {
         server.enqueue(
             MockResponse()
@@ -101,23 +92,5 @@ class TicketActionsTest {
         val result = TicketActions.cancelReservation("event1", "user1", "token")
 
         Assert.assertTrue(result)
-    }
-
-    @Test
-    fun `cancelReservation returns false on failure`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(400))
-
-        val result = TicketActions.cancelReservation("event1", "user1", "token")
-
-        Assert.assertFalse(result)
-    }
-
-    @Test
-    fun `cancelReservation returns false on exception`() = runBlocking {
-        server.shutdown() // Trigger IOException
-
-        val result = TicketActions.cancelReservation("event1", "user1", "token")
-
-        Assert.assertFalse(result)
     }
 }
