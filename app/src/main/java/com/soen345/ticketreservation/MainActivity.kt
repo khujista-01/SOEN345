@@ -4,14 +4,38 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.soen345.ticketreservation.data.AuthClient
@@ -36,12 +60,12 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-internal enum class AuthMode { LOGIN, REGISTER }
-internal enum class AppMode { NORMAL, ADMIN_GATE, ADMIN }
+private enum class AuthMode { LOGIN, REGISTER }
+private enum class AppMode { NORMAL, ADMIN_GATE, ADMIN }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun AppRoot() {
+private fun AppRoot() {
     val scope = rememberCoroutineScope()
 
     var session by remember { mutableStateOf<AuthClient.AuthSession?>(null) }
@@ -60,8 +84,7 @@ internal fun AppRoot() {
                     if (session != null) {
                         if (appMode == AppMode.NORMAL) {
                             TextButton(
-                                onClick = { appMode = AppMode.ADMIN_GATE },
-                                modifier = Modifier.testTag("admin_nav_button")
+                                onClick = { appMode = AppMode.ADMIN_GATE }
                             ) {
                                 Text("Admin")
                             }
@@ -79,8 +102,7 @@ internal fun AppRoot() {
                                     session = null
                                     appMode = AppMode.NORMAL
                                 }
-                            },
-                            modifier = Modifier.testTag("logout_button")
+                            }
                         ) {
                             Text("Logout")
                         }
@@ -142,25 +164,23 @@ internal fun AppRoot() {
 }
 
 @Composable
-internal fun AuthTabs(mode: AuthMode, onModeChange: (AuthMode) -> Unit) {
+private fun AuthTabs(mode: AuthMode, onModeChange: (AuthMode) -> Unit) {
     TabRow(selectedTabIndex = if (mode == AuthMode.LOGIN) 0 else 1) {
         Tab(
             selected = mode == AuthMode.LOGIN,
             onClick = { onModeChange(AuthMode.LOGIN) },
-            text = { Text("Login") },
-            modifier = Modifier.testTag("login_tab")
+            text = { Text("Login") }
         )
         Tab(
             selected = mode == AuthMode.REGISTER,
             onClick = { onModeChange(AuthMode.REGISTER) },
-            text = { Text("Register") },
-            modifier = Modifier.testTag("register_tab")
+            text = { Text("Register") }
         )
     }
 }
 
 @Composable
-internal fun LoginCard(onLoginSuccess: (AuthClient.AuthSession) -> Unit) {
+private fun LoginCard(onLoginSuccess: (AuthClient.AuthSession) -> Unit) {
     val scope = rememberCoroutineScope()
 
     var email by remember { mutableStateOf("") }
@@ -169,7 +189,7 @@ internal fun LoginCard(onLoginSuccess: (AuthClient.AuthSession) -> Unit) {
     var loading by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
 
-    Card(modifier = Modifier.fillMaxWidth().testTag("login_card")) {
+    Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
                 .padding(16.dp)
@@ -185,7 +205,7 @@ internal fun LoginCard(onLoginSuccess: (AuthClient.AuthSession) -> Unit) {
                 value = email,
                 onValueChange = { email = it.trim() },
                 label = { Text("Email") },
-                modifier = Modifier.fillMaxWidth().testTag("login_email_field"),
+                modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
 
@@ -193,7 +213,7 @@ internal fun LoginCard(onLoginSuccess: (AuthClient.AuthSession) -> Unit) {
                 value = password,
                 onValueChange = { password = it },
                 label = { Text("Password") },
-                modifier = Modifier.fillMaxWidth().testTag("login_password_field"),
+                modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation()
             )
@@ -202,8 +222,7 @@ internal fun LoginCard(onLoginSuccess: (AuthClient.AuthSession) -> Unit) {
                 Text(
                     text = it,
                     color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.testTag("error_message")
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
 
@@ -235,7 +254,7 @@ internal fun LoginCard(onLoginSuccess: (AuthClient.AuthSession) -> Unit) {
                     }
                 },
                 enabled = !loading,
-                modifier = Modifier.fillMaxWidth().testTag("login_button")
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -255,7 +274,7 @@ internal fun LoginCard(onLoginSuccess: (AuthClient.AuthSession) -> Unit) {
 }
 
 @Composable
-internal fun RegisterCard(onRegisterSuccess: (AuthClient.AuthSession) -> Unit) {
+private fun RegisterCard(onRegisterSuccess: (AuthClient.AuthSession) -> Unit) {
     val scope = rememberCoroutineScope()
 
     var fullName by remember { mutableStateOf("") }
@@ -268,7 +287,7 @@ internal fun RegisterCard(onRegisterSuccess: (AuthClient.AuthSession) -> Unit) {
     var message by remember { mutableStateOf<String?>(null) }
     var successNote by remember { mutableStateOf<String?>(null) }
 
-    Card(modifier = Modifier.fillMaxWidth().testTag("register_card")) {
+    Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
                 .padding(16.dp)
@@ -284,7 +303,7 @@ internal fun RegisterCard(onRegisterSuccess: (AuthClient.AuthSession) -> Unit) {
                 value = fullName,
                 onValueChange = { fullName = it },
                 label = { Text("Full name (optional)") },
-                modifier = Modifier.fillMaxWidth().testTag("reg_name_field"),
+                modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
 
@@ -292,7 +311,7 @@ internal fun RegisterCard(onRegisterSuccess: (AuthClient.AuthSession) -> Unit) {
                 value = phone,
                 onValueChange = { phone = it },
                 label = { Text("Phone (optional)") },
-                modifier = Modifier.fillMaxWidth().testTag("reg_phone_field"),
+                modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
 
@@ -300,7 +319,7 @@ internal fun RegisterCard(onRegisterSuccess: (AuthClient.AuthSession) -> Unit) {
                 value = email,
                 onValueChange = { email = it.trim() },
                 label = { Text("Email") },
-                modifier = Modifier.fillMaxWidth().testTag("reg_email_field"),
+                modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
 
@@ -308,7 +327,7 @@ internal fun RegisterCard(onRegisterSuccess: (AuthClient.AuthSession) -> Unit) {
                 value = password,
                 onValueChange = { password = it },
                 label = { Text("Password") },
-                modifier = Modifier.fillMaxWidth().testTag("reg_password_field"),
+                modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation()
             )
@@ -317,7 +336,7 @@ internal fun RegisterCard(onRegisterSuccess: (AuthClient.AuthSession) -> Unit) {
                 value = confirm,
                 onValueChange = { confirm = it },
                 label = { Text("Confirm password") },
-                modifier = Modifier.fillMaxWidth().testTag("reg_confirm_field"),
+                modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation()
             )
@@ -326,8 +345,7 @@ internal fun RegisterCard(onRegisterSuccess: (AuthClient.AuthSession) -> Unit) {
                 Text(
                     text = it,
                     color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.testTag("error_message")
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
 
@@ -335,8 +353,7 @@ internal fun RegisterCard(onRegisterSuccess: (AuthClient.AuthSession) -> Unit) {
                 Text(
                     text = it,
                     color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.testTag("success_note")
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
 
@@ -402,7 +419,7 @@ internal fun RegisterCard(onRegisterSuccess: (AuthClient.AuthSession) -> Unit) {
                     }
                 },
                 enabled = !loading,
-                modifier = Modifier.fillMaxWidth().testTag("register_button")
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -421,6 +438,6 @@ internal fun RegisterCard(onRegisterSuccess: (AuthClient.AuthSession) -> Unit) {
     }
 }
 
-internal fun isValidEmail(email: String): Boolean {
+private fun isValidEmail(email: String): Boolean {
     return email.contains('@') && email.contains('.') && email.length >= 5
 }
