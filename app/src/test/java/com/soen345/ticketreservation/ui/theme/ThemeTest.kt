@@ -12,12 +12,14 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [33])
 class ThemeTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
 
+    // ===================== ORIGINAL TESTS =====================
+
+    @Config(sdk = [33])
     @Test
     fun `test theme with dynamic colors modern SDK`() {
         composeTestRule.setContent {
@@ -28,6 +30,7 @@ class ThemeTest {
         composeTestRule.onNodeWithText("Theme Test").assertExists()
     }
 
+    @Config(sdk = [33])
     @Test
     fun `test light theme manual`() {
         composeTestRule.setContent {
@@ -39,6 +42,7 @@ class ThemeTest {
         composeTestRule.onNodeWithText("Light Mode").assertExists()
     }
 
+    @Config(sdk = [33])
     @Test
     fun `test dark theme manual`() {
         composeTestRule.setContent {
@@ -49,10 +53,10 @@ class ThemeTest {
         }
         composeTestRule.onNodeWithText("Dark Mode").assertExists()
     }
-    
+
+    @Config(sdk = [33])
     @Test
     fun `test colors and typography coverage`() {
-        // Accessing these ensures they are counted in coverage
         assertNotNull(Purple80)
         assertNotNull(PurpleGrey80)
         assertNotNull(Pink80)
@@ -60,5 +64,67 @@ class ThemeTest {
         assertNotNull(PurpleGrey40)
         assertNotNull(Pink40)
         assertNotNull(Typography)
+    }
+
+    // ===================== BRANCH COVERAGE TESTS =====================
+
+    // Branch 1: dynamicColor=true AND SDK >= S (31) → dynamic dark scheme
+    @Config(sdk = [31])
+    @Test
+    fun `dynamic dark theme on Android S`() {
+        composeTestRule.setContent {
+            TicketReservationTheme(darkTheme = true, dynamicColor = true) {
+                Text("DynamicDark")
+            }
+        }
+        composeTestRule.onNodeWithText("DynamicDark").assertExists()
+    }
+
+    // Branch 1b: dynamicColor=true AND SDK >= S → dynamic light scheme
+    @Config(sdk = [31])
+    @Test
+    fun `dynamic light theme on Android S`() {
+        composeTestRule.setContent {
+            TicketReservationTheme(darkTheme = false, dynamicColor = true) {
+                Text("DynamicLight")
+            }
+        }
+        composeTestRule.onNodeWithText("DynamicLight").assertExists()
+    }
+
+    // Branch 2: SDK < S → falls through to static dark scheme
+    @Config(sdk = [30])
+    @Test
+    fun `static dark theme below Android S`() {
+        composeTestRule.setContent {
+            TicketReservationTheme(darkTheme = true, dynamicColor = true) {
+                Text("StaticDark")
+            }
+        }
+        composeTestRule.onNodeWithText("StaticDark").assertExists()
+    }
+
+    // Branch 3: SDK < S → falls through to static light scheme (else)
+    @Config(sdk = [30])
+    @Test
+    fun `static light theme below Android S`() {
+        composeTestRule.setContent {
+            TicketReservationTheme(darkTheme = false, dynamicColor = true) {
+                Text("StaticLight")
+            }
+        }
+        composeTestRule.onNodeWithText("StaticLight").assertExists()
+    }
+
+    // Explicit else branch: dynamicColor=false, darkTheme=false
+    @Config(sdk = [33])
+    @Test
+    fun `no dynamic no dark hits else branch`() {
+        composeTestRule.setContent {
+            TicketReservationTheme(darkTheme = false, dynamicColor = false) {
+                Text("ElseBranch")
+            }
+        }
+        composeTestRule.onNodeWithText("ElseBranch").assertExists()
     }
 }
