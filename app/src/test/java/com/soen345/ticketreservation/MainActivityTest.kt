@@ -4,6 +4,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import com.soen345.ticketreservation.data.AuthClient
 import com.soen345.ticketreservation.data.SupabaseClient
+import com.soen345.ticketreservation.ui.theme.TicketReservationTheme
 import io.mockk.*
 import org.junit.After
 import org.junit.Before
@@ -27,6 +28,7 @@ class MainActivityTest {
         
         // Mock default behavior for Supabase fetches to avoid crashes
         coEvery { SupabaseClient.fetchEvents(any(), any()) } returns SupabaseClient.FetchEventsResult(emptyList(), null)
+        coEvery { SupabaseClient.fetchAdminEvents(any()) } returns Pair(emptyList(), null)
     }
 
     @After
@@ -35,18 +37,30 @@ class MainActivityTest {
     }
 
     @Test
-    fun `test initial view shows Login card`() {
-        // We cannot test private AppRoot directly, but we can test if Login exists
-        // by launching the activity or content.
-        // For unit testing, usually you expose internal composables.
-        // Here we test if "Login" tab exists.
-        
-        // Since I cannot access AppRoot (private), this is a placeholder 
-        // showing how you would structure it if it was accessible.
+    fun `test app starts with Login screen`() {
+        composeTestRule.setContent {
+            TicketReservationTheme(dynamicColor = false) {
+                AppRoot()
+            }
+        }
+
+        composeTestRule.onNodeWithTag("login_card").assertExists()
+        composeTestRule.onNodeWithText("Welcome back").assertExists()
     }
 
     @Test
-    fun `test tab switching between Login and Register`() {
-        // Placeholder for tab switching logic
+    fun `test switching to Register tab`() {
+        composeTestRule.setContent {
+            TicketReservationTheme(dynamicColor = false) {
+                AppRoot()
+            }
+        }
+
+        composeTestRule.onNodeWithTag("register_tab").performClick()
+        composeTestRule.waitForIdle()
+        
+        composeTestRule.onNodeWithTag("register_card").assertExists()
+        composeTestRule.onNodeWithText("Create an account").assertExists()
     }
+
 }
