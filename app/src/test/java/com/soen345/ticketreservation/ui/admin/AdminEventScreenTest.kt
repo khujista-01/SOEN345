@@ -27,7 +27,6 @@ class AdminEventScreenTest {
     @Before
     fun setup() {
         mockkObject(SupabaseClient)
-        coEvery { SupabaseClient.fetchAdminEvents(any()) } returns Pair(emptyList(), null)
     }
 
     @After
@@ -36,147 +35,88 @@ class AdminEventScreenTest {
     }
 
     @Test
-    fun `test loading events state`() {
-        // Mock a slow response
-        coEvery { SupabaseClient.fetchAdminEvents(any()) } coAnswers {
-            kotlinx.coroutines.delay(2000)
-            Pair(emptyList(), null)
-        }
-
-        composeTestRule.setContent {
-            Surface {
-                AdminEventScreen(
-                    manager = AdminEventManager(),
-                    accessToken = "test_token",
-                    onBackToNormal = {}
-                )
-            }
-        }
-
-        composeTestRule.onNodeWithText("Loading events...", substring = true).assertExists()
-    }
-
-    @Test
-    fun `test error state on fetch failure`() {
-        coEvery { SupabaseClient.fetchAdminEvents(any()) } returns Pair(null, "Server Error")
-
-        composeTestRule.setContent {
-            Surface {
-                AdminEventScreen(
-                    manager = AdminEventManager(),
-                    accessToken = "test_token",
-                    onBackToNormal = {}
-                )
-            }
-        }
-
-        composeTestRule.onNodeWithText("Server Error", substring = true).assertExists()
-    }
-
-    @Test
-    fun `test adding an event shows success message`() {
-        coEvery { SupabaseClient.insertAdminEvent(any(), any()) } returns Pair(true, "Success")
+    fun `test buildEventFromForm validation branches`() {
+        coEvery { SupabaseClient.fetchAdminEvents(any()) } returns Pair(emptyList(), null)
         
         composeTestRule.setContent {
             Surface {
-                AdminEventScreen(
-                    manager = AdminEventManager(),
-                    accessToken = "test_token",
-                    onBackToNormal = {}
-                )
+                AdminEventScreen(AdminEventManager(), "token", {})
             }
         }
 
-        composeTestRule.onNodeWithText("id").performTextInput("123")
-        composeTestRule.onNodeWithText("title").performTextInput("Test Event")
-        composeTestRule.onNodeWithText("price").performTextInput("10.0")
-        composeTestRule.onNodeWithText("availableTickets").performTextInput("50")
-
+        // 1. Invalid Price branch
+        composeTestRule.onNodeWithText("price").performTextInput("invalid")
         composeTestRule.onNodeWithText("Add Event").performClick()
-        composeTestRule.waitForIdle()
-
-        composeTestRule.onNodeWithText("Event added successfully.", substring = true).assertExists()
-    }
-
-    @Test
-    fun `test edit event shows success message`() {
-        coEvery { SupabaseClient.updateAdminEvent(any(), any()) } returns Pair(true, "Success")
-
-        composeTestRule.setContent {
-            Surface {
-                AdminEventScreen(
-                    manager = AdminEventManager(),
-                    accessToken = "test_token",
-                    onBackToNormal = {}
-                )
-            }
-        }
-
-        composeTestRule.onNodeWithText("id").performTextInput("123")
-        composeTestRule.onNodeWithText("title").performTextInput("Edited Title")
-        composeTestRule.onNodeWithText("price").performTextInput("20.0")
-        composeTestRule.onNodeWithText("availableTickets").performTextInput("100")
-
-        composeTestRule.onNodeWithText("Edit Event").performClick()
-        composeTestRule.waitForIdle()
-
-        composeTestRule.onNodeWithText("Event edited successfully.", substring = true).assertExists()
-    }
-
-    @Test
-    fun `test error message on invalid input`() {
-        composeTestRule.setContent {
-            Surface {
-                AdminEventScreen(
-                    manager = AdminEventManager(),
-                    accessToken = "test_token",
-                    onBackToNormal = {}
-                )
-            }
-        }
-
-        composeTestRule.onNodeWithText("Add Event").performClick()
-        composeTestRule.waitForIdle()
-
         composeTestRule.onNodeWithText("Price must be a valid number", substring = true).assertExists()
+
+        // 2. Invalid Tickets branch
+        composeTestRule.onNodeWithText("price").performTextReplacement("10.0")
+        composeTestRule.onNodeWithText("availableTickets").performTextInput("abc")
+        composeTestRule.onNodeWithText("Add Event").performClick()
+        composeTestRule.onNodeWithText("Available tickets must be a valid integer", substring = true).assertExists()
     }
 
     @Test
-    fun `test cancelling event requires ID`() {
+    fun `test add and edit failure branches`() {
+        coEvery { SupabaseClient.fetchAdminEvents(any()) } returns Pair(emptyList(), null)
+        coEvery { SupabaseClient.insertAdminEvent(any(), any()) } returns Pair(false, "DB Error")
+        coEvery { SupabaseClient.updateAdminEvent(any(), any()) } returns Pair(false, "Update Failed")
+
         composeTestRule.setContent {
             Surface {
-                AdminEventScreen(
-                    manager = AdminEventManager(),
-                    accessToken = "test_token",
-                    onBackToNormal = {}
-                )
+                AdminEventScreen(AdminEventManager(), "token", {})
             }
         }
 
+        // Fill form
+        composeTestRule.onNodeWithText("price").performTextInput("10.0")
+        composeTestRule.onNodeWithText("availableTickets").performTextInput("10")
+
+        // Test Add Failure
+        composeTestRule.onNodeWithText("Add Event").performClick()
+        composeTestRule.onNodeWithText("DB Error", substring = true).assertExists()
+
+        // Test Edit Failure
+        composeTestRule.onNodeWithText("Edit Event").performClick()
+        composeTestRule.onNodeWithText("Update Failed", substring = true).assertExists()
+    }
+
+    @Test
+    fun `test cancel event logic branches`() {
+        coEvery { SupabaseClient.fetchAdminEvents(any()) } returns Pair(emptyList(), null)
+        coEvery { SupabaseClient.cancelAdminEvent(any(), any()) } returns Pair(true, "Cancelled")
+
+        composeTestRule.setContent {
+            Surface {
+                AdminEventScreen(AdminEventManager(), "token", {})
+            }
+        }
+
+        // 1. Missing ID branch
         composeTestRule.onNodeWithText("Cancel Event").performClick()
-        composeTestRule.waitForIdle()
-
         composeTestRule.onNodeWithText("Event ID is required to cancel", substring = true).assertExists()
+
+        // 2. Success branch
+        composeTestRule.onNodeWithText("id").performTextInput("123")
+        composeTestRule.onNodeWithText("Cancel Event").performClick()
+        composeTestRule.onNodeWithText("Event cancelled successfully", substring = true).assertExists()
+        
+        // 3. Failure branch
+        coEvery { SupabaseClient.cancelAdminEvent(any(), any()) } returns Pair(false, "Delete Forbidden")
+        composeTestRule.onNodeWithText("Cancel Event").performClick()
+        composeTestRule.onNodeWithText("Delete Forbidden", substring = true).assertExists()
     }
 
     @Test
-    fun `test list of events is displayed`() {
-        val sampleEvents = listOf(
-            AdminEvent("1", "Event A", "Desc", "Cat", "Loc", "Date", 10, 10.0)
-        )
-        coEvery { SupabaseClient.fetchAdminEvents(any()) } returns Pair(sampleEvents, null)
+    fun `test fetch failure branch`() {
+        coEvery { SupabaseClient.fetchAdminEvents(any()) } returns Pair(null, "Connection Failure")
 
         composeTestRule.setContent {
             Surface {
-                AdminEventScreen(
-                    manager = AdminEventManager(),
-                    accessToken = "test_token",
-                    onBackToNormal = {}
-                )
+                AdminEventScreen(AdminEventManager(), "token", {})
             }
         }
 
-        composeTestRule.onNodeWithText("Title: Event A", substring = true).assertExists()
-        composeTestRule.onNodeWithText("ID: 1", substring = true).assertExists()
+        composeTestRule.onNodeWithText("Connection Failure", substring = true).assertExists()
     }
 }

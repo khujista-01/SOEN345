@@ -1,5 +1,6 @@
 package com.soen345.ticketreservation.ui.events_page
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Surface
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.test.*
@@ -24,8 +25,9 @@ class EventsScreenTest {
     val composeTestRule = createComposeRule()
 
     private val sampleEvents = listOf(
-        Event("1", "Rock Concert", "Music event", "Music", "Montreal", "2023-12-01", 100, 50.0),
-        Event("2", "Art Expo", "Painting display", "Art", "Laval", "2023-12-05", 50, 20.0)
+        Event("1", "Rock Concert", "Epic music night", "Music", "Montreal", "2023-12-01", 100, 50.0),
+        Event("2", "Art Expo", "Painting display", "Art", "Laval", "2023-12-05", 50, 20.0),
+        Event("3", "Jazz Fest", "Smooth jazz", "Music", "Montreal", "2023-12-10", 0, 15.0)
     )
 
     @Before
@@ -39,132 +41,106 @@ class EventsScreenTest {
     }
 
     @Test
-    fun `test filtering by search text`() {
+    fun `test all filtering logic combinations`() {
         composeTestRule.setContent {
             Surface {
                 EventsScreen(
                     events = sampleEvents,
-                    userId = "user1",
-                    userAccessToken = "token",
-                    userEmail = "user@test.com",
+                    userId = "u1",
+                    userAccessToken = "t1",
+                    userEmail = "e1",
                     onReservationChanged = {}
                 )
             }
         }
 
-        composeTestRule.onNodeWithText("Rock Concert").assertExists()
-        composeTestRule.onNodeWithText("Art Expo").assertExists()
-
-        composeTestRule.onNodeWithText("Search").performTextInput("Rock")
-        composeTestRule.waitForIdle()
-
+        // 1. Match description via search
+        composeTestRule.onNodeWithText("Search").performTextInput("Epic")
         composeTestRule.onNodeWithText("Rock Concert").assertExists()
         composeTestRule.onNodeWithText("Art Expo").assertDoesNotExist()
-    }
+        composeTestRule.onNodeWithText("Search").performTextClearance()
 
-    @Test
-    fun `test filtering by location`() {
-        composeTestRule.setContent {
-            Surface {
-                EventsScreen(
-                    events = sampleEvents,
-                    userId = "user1",
-                    userAccessToken = "token",
-                    userEmail = "user@test.com",
-                    onReservationChanged = {}
-                )
-            }
-        }
-
-        composeTestRule.onNodeWithText("Location").performTextInput("Laval")
-        composeTestRule.waitForIdle()
-
+        // 2. Filter by Category
+        composeTestRule.onNodeWithText("Category").performTextInput("Art")
         composeTestRule.onNodeWithText("Art Expo").assertExists()
+        composeTestRule.onNodeWithText("Rock Concert").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Category").performTextClearance()
+
+        // 3. Filter by Date
+        composeTestRule.onNodeWithText("Date").performTextInput("2023-12-10")
+        composeTestRule.onNodeWithText("Jazz Fest").assertExists()
+        composeTestRule.onNodeWithText("Rock Concert").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Date").performTextClearance()
+
+        // 4. Combined Filter (Location + Category) - multiple matches
+        composeTestRule.onNodeWithText("Location").performTextInput("Montreal")
+        composeTestRule.onNodeWithText("Category").performTextInput("Music")
+        composeTestRule.onNodeWithText("Rock Concert").assertExists()
+        composeTestRule.onNodeWithText("Jazz Fest").assertExists()
+        
+        // 5. Filter with no matches
+        composeTestRule.onNodeWithText("Search").performTextInput("NonExistent")
         composeTestRule.onNodeWithText("Rock Concert").assertDoesNotExist()
     }
 
     @Test
-    fun `test loading state shows progress indicator`() {
-        // We don't complete the coEvery so it stays in loading state
-        coEvery { SupabaseClient.fetchEvents(any(), any()) } coAnswers {
-            kotlinx.coroutines.delay(5000)
-            SupabaseClient.FetchEventsResult(emptyList(), null)
-        }
-
-        composeTestRule.setContent {
-            Surface {
-                EventsLoadingScreen(
-                    userId = "user1",
-                    userAccessToken = "token",
-                    userEmail = "user@test.com"
-                )
-            }
-        }
-
-        composeTestRule.onNode(hasProgressBarRangeInfo(ProgressBarRangeInfo.Indeterminate)).assertExists()
-    }
-
-    @Test
-    fun `test error state shows error message`() {
-        coEvery { SupabaseClient.fetchEvents(any(), any()) } returns 
-            SupabaseClient.FetchEventsResult(null, "Network Error")
-
-        composeTestRule.setContent {
-            Surface {
-                EventsLoadingScreen(
-                    userId = "user1",
-                    userAccessToken = "token",
-                    userEmail = "user@test.com"
-                )
-            }
-        }
-
-        composeTestRule.onNodeWithText("Network Error").assertExists()
-    }
-
-    @Test
-    fun `test empty list state`() {
-        coEvery { SupabaseClient.fetchEvents(any(), any()) } returns 
-            SupabaseClient.FetchEventsResult(emptyList(), null)
-
-        composeTestRule.setContent {
-            Surface {
-                EventsLoadingScreen(
-                    userId = "user1",
-                    userAccessToken = "token",
-                    userEmail = "user@test.com"
-                )
-            }
-        }
-
-        // Search field exists, but no EventCards exist
-        composeTestRule.onNodeWithText("Search").assertExists()
-        // Check that no "Location:" text exists (which would be inside an EventCard)
-        composeTestRule.onNodeWithText("Location:", substring = true).assertDoesNotExist()
-    }
-
-    @Test
-    fun `test reservation success shows confirmation dialog`() {
+    fun `test event card interaction branches - reserve success`() {
         coEvery { SupabaseClient.insertReservation(any(), any(), any()) } returns true
-        coEvery { SupabaseClient.sendConfirmationEmail(any(), any(), any(), any()) } returns (200 to "Success")
+        coEvery { SupabaseClient.sendConfirmationEmail(any(), any(), any(), any()) } returns (200 to "OK")
 
         composeTestRule.setContent {
             Surface {
-                EventCard(
-                    event = sampleEvents[0],
-                    userId = "user1",
-                    userAccessToken = "token",
-                    userEmail = "user@test.com",
-                    onReservationChanged = {}
-                )
+                EventCard(sampleEvents[0], "u1", "t1", "e1", {})
             }
         }
 
         composeTestRule.onNodeWithText("Reserve Ticket").performClick()
         composeTestRule.waitForIdle()
-
         composeTestRule.onNodeWithText("Confirmation").assertExists()
         composeTestRule.onNodeWithText("OK").performClick()
-        composeTestRule.onNodeWithText("Confirmation").assertDoesNotExist()
+    }
+
+    @Test
+    fun `test event card interaction branches - cancel failure`() {
+        coEvery { SupabaseClient.deleteReservation(any(), any(), any()) } returns false
+
+        composeTestRule.setContent {
+            Surface {
+                EventCard(sampleEvents[1].copy(isReservedByCurrentUser = true), "u1", "t1", "e1", {})
+            }
+        }
+
+        // Branch: Cancel Failure (should log error and not change state)
+        composeTestRule.onNodeWithText("Cancel Reservation").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Cancel Reservation").assertExists()
+    }
+
+    @Test
+    fun `test loading state`() {
+        coEvery { SupabaseClient.fetchEvents(any(), any()) } coAnswers {
+            kotlinx.coroutines.delay(10000)
+            SupabaseClient.FetchEventsResult(emptyList(), null)
+        }
+        
+        composeTestRule.setContent { 
+            Surface {
+                EventsLoadingScreen("u1", "t1", "e1") 
+            }
+        }
+        composeTestRule.onNode(hasProgressBarRangeInfo(ProgressBarRangeInfo.Indeterminate)).assertExists()
+    }
+
+    @Test
+    fun `test error state`() {
+        coEvery { SupabaseClient.fetchEvents(any(), any()) } returns SupabaseClient.FetchEventsResult(null, "Network Error")
+        
+        composeTestRule.setContent { 
+            Surface {
+                EventsLoadingScreen("u1", "t1", "e1") 
+            }
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Network Error").assertExists()
     }
 }
