@@ -4,7 +4,10 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 
 class AdminEventManagerTest {
     private lateinit var manager: AdminEventManager
@@ -24,6 +27,8 @@ class AdminEventManagerTest {
             price = 50.0
         )
     }
+
+    // ===================== ORIGINAL TESTS =====================
 
     // ========== addEvent Tests ==========
 
@@ -311,5 +316,139 @@ class AdminEventManagerTest {
         manager.addEvent(soldOutEvent)
         val retrieved = manager.getEventById("event1")
         assertEquals(0, retrieved?.availableTickets)
+    }
+
+    // ===================== BRANCH COVERAGE TESTS =====================
+
+    // --- validateEvent: whitespace-only strings (isBlank catches these) ---
+
+    @Test
+    fun `addEvent throws when id is whitespace only`() {
+        val ex = assertThrows(IllegalArgumentException::class.java) {
+            manager.addEvent(validEvent.copy(id = "   "))
+        }
+        assertEquals("Event ID cannot be empty", ex.message)
+    }
+
+    @Test
+    fun `addEvent throws when description is whitespace only`() {
+        val ex = assertThrows(IllegalArgumentException::class.java) {
+            manager.addEvent(validEvent.copy(description = "\t"))
+        }
+        assertEquals("Event description cannot be empty", ex.message)
+    }
+
+    @Test
+    fun `addEvent throws when categoryId is whitespace only`() {
+        val ex = assertThrows(IllegalArgumentException::class.java) {
+            manager.addEvent(validEvent.copy(categoryId = " "))
+        }
+        assertEquals("Event category cannot be empty", ex.message)
+    }
+
+    @Test
+    fun `addEvent throws when location is whitespace only`() {
+        val ex = assertThrows(IllegalArgumentException::class.java) {
+            manager.addEvent(validEvent.copy(location = "  "))
+        }
+        assertEquals("Event location cannot be empty", ex.message)
+    }
+
+    @Test
+    fun `addEvent throws when date is whitespace only`() {
+        val ex = assertThrows(IllegalArgumentException::class.java) {
+            manager.addEvent(validEvent.copy(date = " "))
+        }
+        assertEquals("Event date cannot be empty", ex.message)
+    }
+
+    // --- editEvent: blank ID triggers ID validation before existence check ---
+
+    @Test
+    fun `editEvent throws IllegalArgumentException for blank id before checking existence`() {
+        val ex = assertThrows(IllegalArgumentException::class.java) {
+            manager.editEvent(validEvent.copy(id = ""))
+        }
+        assertEquals("Event ID cannot be empty", ex.message)
+    }
+
+    // --- editEvent: whitespace-only validation ---
+
+    @Test
+    fun `editEvent throws for whitespace-only location`() {
+        manager.addEvent(validEvent)
+        val ex = assertThrows(IllegalArgumentException::class.java) {
+            manager.editEvent(validEvent.copy(location = "  "))
+        }
+        assertEquals("Event location cannot be empty", ex.message)
+    }
+
+    @Test
+    fun `editEvent throws for whitespace-only date`() {
+        manager.addEvent(validEvent)
+        val ex = assertThrows(IllegalArgumentException::class.java) {
+            manager.editEvent(validEvent.copy(date = "\n"))
+        }
+        assertEquals("Event date cannot be empty", ex.message)
+    }
+
+    @Test
+    fun `editEvent throws for whitespace-only categoryId`() {
+        manager.addEvent(validEvent)
+        val ex = assertThrows(IllegalArgumentException::class.java) {
+            manager.editEvent(validEvent.copy(categoryId = " "))
+        }
+        assertEquals("Event category cannot be empty", ex.message)
+    }
+
+    // --- clear() ---
+
+    @Test
+    fun `clear empties all events`() {
+        manager.addEvent(validEvent)
+        manager.addEvent(validEvent.copy(id = "event2"))
+        manager.clear()
+        assertEquals(0, manager.getAllEvents().size)
+    }
+
+    @Test
+    fun `after clear same id can be added again`() {
+        manager.addEvent(validEvent)
+        manager.clear()
+        manager.addEvent(validEvent) // Should not throw
+        assertEquals(1, manager.getAllEvents().size)
+    }
+
+    // --- getAllEvents snapshot ---
+
+    @Test
+    fun `getAllEvents returns independent snapshot`() {
+        manager.addEvent(validEvent)
+        val snapshot = manager.getAllEvents()
+        assertEquals(1, snapshot.size)
+        assertEquals(1, manager.getAllEvents().size)
+    }
+
+    // --- cancelEvent: already-cancelled event stays cancelled ---
+
+    @Test
+    fun `cancelEvent on already-cancelled event keeps isCancelled true`() {
+        manager.addEvent(validEvent.copy(isCancelled = true))
+        manager.cancelEvent("event1")
+        assertTrue(manager.getEventById("event1")!!.isCancelled)
+    }
+
+    // --- boundary: price and tickets exactly 0 are valid ---
+
+    @Test
+    fun `addEvent accepts price of exactly 0`() {
+        manager.addEvent(validEvent.copy(price = 0.0))
+        assertNotNull(manager.getEventById("event1"))
+    }
+
+    @Test
+    fun `addEvent accepts availableTickets of exactly 0`() {
+        manager.addEvent(validEvent.copy(availableTickets = 0))
+        assertEquals(0, manager.getEventById("event1")?.availableTickets)
     }
 }
