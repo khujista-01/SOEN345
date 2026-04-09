@@ -25,6 +25,8 @@ object SupabaseClient {
     private val http = OkHttpClient()
     var BASE_URL = "${BuildConfig.SUPABASE_URL}/rest/v1"
 
+    private fun normalizeEventId(id: String): String = id.trim().lowercase()
+
 
     suspend fun insertReservation(eventId: String, userId: String, accessToken: String): Boolean {
         return withContext(Dispatchers.IO) {
@@ -275,7 +277,7 @@ object SupabaseClient {
     suspend fun fetchEvents(accessToken: String, userId: String): FetchEventsResult = withContext(Dispatchers.IO) {
 
         val reservedEventIds = fetchReservedEventIdsForUser(accessToken, userId)
-        Log.d(TAG, "fetchEvents reserved set for userId=$userId => count=${reservedEventIds.size}")
+        Log.d(TAG, "fetchEvents start userId=$userId reservedEventCount=${reservedEventIds.size}")
 
         val url =
             //"${BuildConfig.SUPABASE_URL}/rest/v1/events?select=*"
@@ -322,8 +324,14 @@ object SupabaseClient {
                                     date = obj.getString("date"),
                                     availableTickets = obj.getInt("available_tickets"),
                                     price = obj.getDouble("price"),
-                                    isReservedByCurrentUser = reservedEventIds.contains(obj.getString("id"))
+                                    isReservedByCurrentUser = reservedEventIds.contains(normalizeEventId(obj.getString("id")))
                                 )
+                            )
+                            val eventId = obj.getString("id")
+                            val reservationExists = reservedEventIds.contains(normalizeEventId(eventId))
+                            Log.d(
+                                TAG,
+                                "fetchEvents map userId=$userId eventId=$eventId reservationExists=$reservationExists isReservedByCurrentUser=$reservationExists"
                             )
                         } catch (e: Exception) {
                             Log.e(TAG, "fetchEvents parse failure at index=$i row=$obj", e)
@@ -365,7 +373,11 @@ object SupabaseClient {
                     for (i in 0 until array.length()) {
                         val obj = array.getJSONObject(i)
                         val eventId = obj.optString("event_id")
-                        if (eventId.isNotBlank()) add(eventId)
+                        val normalizedEventId = normalizeEventId(eventId)
+                        if (normalizedEventId.isNotBlank()) {
+                            add(normalizedEventId)
+                            Log.d(TAG, "fetchReservedEventIdsForUser userId=$userId eventId=$eventId normalized=$normalizedEventId")
+                        }
                     }
                 }
             }
