@@ -25,9 +25,6 @@ fun EventsScreen(
     var selectedDate by remember { mutableStateOf("") }
     var selectedLocation by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("") }
-    var reservationStates by remember(events) {
-        mutableStateOf(events.associate { it.id to it.isReservedByCurrentUser })
-    }
 
     // Filtering logic
     val filteredEvents = events.filter { event ->
@@ -62,15 +59,9 @@ fun EventsScreen(
             items(filteredEvents) { event ->
                 EventCard(
                     event = event,
-                    isReserved = reservationStates[event.id] ?: event.isReservedByCurrentUser,
                     userId = userId,
                     userAccessToken = userAccessToken,
                     userEmail = userEmail,
-                    onReservedStateChanged = { reserved ->
-                        reservationStates = reservationStates.toMutableMap().apply {
-                            this[event.id] = reserved
-                        }
-                    },
                     onReservationChanged = onReservationChanged
                 )
             }
@@ -135,16 +126,16 @@ fun EventFiltersCompact(
 @Composable
 fun EventCard(
     event: Event,
-    isReserved: Boolean,
     userId: String,
     userAccessToken: String,
     userEmail: String,
-    onReservedStateChanged: (Boolean) -> Unit,
     onReservationChanged: suspend () -> Unit
 ) {
+    var isReserved by remember(event.id, event.isReservedByCurrentUser) {
+        mutableStateOf(event.isReservedByCurrentUser)
+    }
     val scope = rememberCoroutineScope()
     var showDialog by remember { mutableStateOf(false) }
-    var isProcessing by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -168,6 +159,8 @@ fun EventCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            var isProcessing by remember { mutableStateOf(false) }
+
             Button(
                 onClick = {
                     if (isProcessing) return@Button
@@ -184,12 +177,12 @@ fun EventCard(
 
                         if (success) {
                             Log.d("EVENTS", "Ticket $action success for eventId=${event.id}, userId=$userId")
-                            onReservedStateChanged(!isReserved)
+                            isReserved = !isReserved
                             Log.d("EVENTS", "Triggering events refresh after $action for eventId=${event.id}")
                             onReservationChanged()
 
                             // Send confirmation email only when reserving
-                            if (!isReserved) {
+                            if (isReserved) {
                                 try {
                                     val (code, msg) = SupabaseClient.sendConfirmationEmail(
                                         userEmail = userEmail,
