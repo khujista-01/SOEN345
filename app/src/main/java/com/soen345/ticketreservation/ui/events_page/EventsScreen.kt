@@ -25,6 +25,7 @@ fun EventsScreen(
     var selectedDate by remember { mutableStateOf("") }
     var selectedLocation by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("") }
+    var showReservationDialog by remember { mutableStateOf(false) }
 
     // Filtering logic
     val filteredEvents = events.filter { event ->
@@ -56,15 +57,33 @@ fun EventsScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(filteredEvents) { event ->
+            items(filteredEvents, key = { it.id }) { event ->
                 EventCard(
                     event = event,
                     userId = userId,
                     userAccessToken = userAccessToken,
                     userEmail = userEmail,
-                    onReservationChanged = onReservationChanged
+                    onReservationChanged = onReservationChanged,
+                    onReservationConfirmed = {
+                        showReservationDialog = true
+                    }
                 )
             }
+        }
+
+        if (showReservationDialog) {
+            AlertDialog(
+                onDismissRequest = { showReservationDialog = false },
+                confirmButton = {
+                    Button(onClick = { showReservationDialog = false }) {
+                        Text("OK")
+                    }
+                },
+                title = { Text("Confirmation") },
+                text = {
+                    Text("Your ticket has been reserved and a confirmation email has been sent!")
+                }
+            )
         }
     }
 }
@@ -129,13 +148,13 @@ fun EventCard(
     userId: String,
     userAccessToken: String,
     userEmail: String,
-    onReservationChanged: suspend () -> Unit
+    onReservationChanged: suspend () -> Unit,
+    onReservationConfirmed: () -> Unit
 ) {
     var isReserved by remember(event.id, event.isReservedByCurrentUser) {
         mutableStateOf(event.isReservedByCurrentUser)
     }
     val scope = rememberCoroutineScope()
-    var showDialog by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -178,8 +197,6 @@ fun EventCard(
                         if (success) {
                             Log.d("EVENTS", "Ticket $action success for eventId=${event.id}, userId=$userId")
                             isReserved = !isReserved
-                            Log.d("EVENTS", "Triggering events refresh after $action for eventId=${event.id}")
-                            onReservationChanged()
 
                             // Send confirmation email only when reserving
                             if (isReserved) {
@@ -194,8 +211,12 @@ fun EventCard(
                                 } catch (e: Exception) {
                                     Log.e("EMAIL", "Failed to send email", e)
                                 }
-                                showDialog = true
+                                Log.d("EVENTS", "Popup trigger after successful reservation for eventId=${event.id}")
+                                onReservationConfirmed()
                             }
+
+                            Log.d("EVENTS", "Triggering events refresh after $action for eventId=${event.id}")
+                            onReservationChanged()
                         } else {
                             Log.e("EVENTS", "Ticket $action failed for eventId=${event.id}, userId=$userId")
                         }
@@ -214,20 +235,6 @@ fun EventCard(
                     }
                 )
             }
-        }
-        if (showDialog) {
-            AlertDialog(
-                onDismissRequest = { showDialog = false },
-                confirmButton = {
-                    Button(onClick = { showDialog = false }) {
-                        Text("OK")
-                    }
-                },
-                title = { Text("Confirmation") },
-                text = {
-                    Text("Your ticket has been reserved and a confirmation email has been sent!")
-                }
-            )
         }
     }
 }
