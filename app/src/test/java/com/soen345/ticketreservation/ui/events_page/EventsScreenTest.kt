@@ -2,6 +2,10 @@ package com.soen345.ticketreservation.ui.events_page
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -90,7 +94,16 @@ class EventsScreenTest {
 
         composeTestRule.setContent {
             Surface {
-                EventCard(sampleEvents[0], "u1", "t1", "e1", {})
+                var isReserved by remember { mutableStateOf(false) }
+                EventCard(
+                    event = sampleEvents[0],
+                    isReserved = isReserved,
+                    userId = "u1",
+                    userAccessToken = "t1",
+                    userEmail = "e1",
+                    onReservedStateChanged = { isReserved = it },
+                    onReservationChanged = {}
+                )
             }
         }
 
@@ -98,6 +111,7 @@ class EventsScreenTest {
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Confirmation").assertExists()
         composeTestRule.onNodeWithText("OK").performClick()
+        composeTestRule.onNodeWithText("Cancel Reservation").assertExists()
     }
 
     @Test
@@ -106,7 +120,16 @@ class EventsScreenTest {
 
         composeTestRule.setContent {
             Surface {
-                EventCard(sampleEvents[1].copy(isReservedByCurrentUser = true), "u1", "t1", "e1", {})
+                var isReserved by remember { mutableStateOf(true) }
+                EventCard(
+                    event = sampleEvents[1].copy(isReservedByCurrentUser = true),
+                    isReserved = isReserved,
+                    userId = "u1",
+                    userAccessToken = "t1",
+                    userEmail = "e1",
+                    onReservedStateChanged = { isReserved = it },
+                    onReservationChanged = {}
+                )
             }
         }
 
@@ -114,6 +137,38 @@ class EventsScreenTest {
         composeTestRule.onNodeWithText("Cancel Reservation").performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Cancel Reservation").assertExists()
+    }
+
+    @Test
+    fun `test event card toggles reserve cancel reserve around confirmation dialog`() {
+        coEvery { SupabaseClient.insertReservation(any(), any(), any()) } returns true
+        coEvery { SupabaseClient.deleteReservation(any(), any(), any()) } returns true
+        coEvery { SupabaseClient.sendConfirmationEmail(any(), any(), any(), any()) } returns (200 to "OK")
+
+        composeTestRule.setContent {
+            Surface {
+                var isReserved by remember { mutableStateOf(false) }
+                EventCard(
+                    event = sampleEvents[0],
+                    isReserved = isReserved,
+                    userId = "u1",
+                    userAccessToken = "t1",
+                    userEmail = "e1",
+                    onReservedStateChanged = { isReserved = it },
+                    onReservationChanged = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Reserve Ticket").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Confirmation").assertExists()
+        composeTestRule.onNodeWithText("OK").performClick()
+        composeTestRule.onNodeWithText("Cancel Reservation").assertExists()
+
+        composeTestRule.onNodeWithText("Cancel Reservation").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Reserve Ticket").assertExists()
     }
 
     @Test
