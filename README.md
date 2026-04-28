@@ -73,7 +73,7 @@ Run tests using:
 - **Sprint 1:** Setup & Basic Features (Current)
 - **Sprint 2:** Core Functionality
 - **Sprint 3:** Integration & Testing
-- **Sprint 4:** Polish & Deployment
+- **Sprint 4:** Polish 
 
 ## License
 
