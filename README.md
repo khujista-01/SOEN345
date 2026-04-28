@@ -18,7 +18,7 @@ Develop a ticket booking system that allows
 - Users to browse and reserve tickets for various events  
 - Event organizers to manage events  
 - Digital confirmations via email/SMS  
-- Cloud-based deployment with high availability
+
   
 ## Technology Stack  
 
